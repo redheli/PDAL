@@ -1,5 +1,7 @@
 # .travis.yml
 # Configure Travis CI service for http://github.com/PDAL
+sudo: false
+
 language: cpp
 
 compiler:
@@ -11,6 +13,32 @@ env:
   - PDAL_OPTIONAL_COMPONENTS=none
 
 before_install: ./scripts/ci/before_install.sh
+
+addons:
+  apt:
+    packages:
+      - g++-4.8
+      - libboost1.55-dev
+      - libeigen3-dev
+      - libflann-dev
+      - libgdal-dev
+      - libgdal1h
+      - libgeos++-dev
+      - libhdf5-serial-dev
+      - libproj-dev
+      - libtiff4-dev
+      - libxml2-dev
+      - ninja-build
+      - postgresql-server-dev-9.1
+      - python-numpy
+      - python-software-properties
+
+addons:
+  apt:
+    sources:
+      - boost-latest
+      - kalakris-cmake
+      - ubuntu-toolchain-r-test
 
 script: ./scripts/ci/script.sh
 

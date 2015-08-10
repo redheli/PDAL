@@ -57,5 +57,5 @@ fi
 # saturate Travis's available memory.
 ${MAKECMD} -j ${NUMTHREADS} && \
     LD_LIBRARY_PATH=./lib && \
-    sudo PGUSER=postgres ctest -V && \
-    sudo ${MAKECMD} install
+    PGUSER=postgres ctest -V && \
+    ${MAKECMD} install
