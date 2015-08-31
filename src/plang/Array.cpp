@@ -1,5 +1,6 @@
 /******************************************************************************
 * Copyright (c) 2011, Michael P. Gerlek (mpg@flaxen.com)
+* Copyright (c) 2015, Howard Butler (howard@hobu.co)
 *
 * All rights reserved.
 *
@@ -32,7 +33,7 @@
 * OF SUCH DAMAGE.
 ****************************************************************************/
 
-#include <pdal/plang/Invocation.hpp>
+#include <pdal/plang/Array.hpp>
 #include <pdal/plang/Environment.hpp>
 
 #ifdef PDAL_COMPILER_MSVC
@@ -55,9 +56,8 @@ namespace pdal
 namespace plang
 {
 
-Invocation::Invocation(const Script& script)
-    : m_script(script)
-    , m_bytecode(NULL)
+Array::Array()
+    : m_bytecode(NULL)
     , m_module(NULL)
     , m_dictionary(NULL)
     , m_function(NULL)
@@ -66,45 +66,45 @@ Invocation::Invocation(const Script& script)
     , m_scriptArgs(NULL)
     , m_scriptResult(NULL)
 {
-    resetArguments();
+//     resetArguments();
 }
 
 
-Invocation::~Invocation()
+Array::~Array()
 {
     cleanup();
 }
 
 
-void Invocation::compile()
-{
-    m_bytecode = Py_CompileString(m_script.source(), m_script.module(),
-        Py_file_input);
-    if (!m_bytecode)
-        throw pdal::pdal_error(getTraceback());
+// void Array::compile()
+// {
+//     m_bytecode = Py_CompileString(m_script.source(), m_script.module(),
+//         Py_file_input);
+//     if (!m_bytecode)
+//         throw pdal::pdal_error(getTraceback());
+//
+//     Py_INCREF(m_bytecode);
+//
+//     m_module = PyImport_ExecCodeModule(const_cast<char*>(m_script.module()),
+//         m_bytecode);
+//     if (!m_module)
+//         throw pdal::pdal_error(getTraceback());
+//
+//     m_dictionary = PyModule_GetDict(m_module);
+//     m_function = PyDict_GetItemString(m_dictionary, m_script.function());
+//     if (!m_function)
+//     {
+//         std::ostringstream oss;
+//         oss << "unable to find target function '" << m_script.function() <<
+//             "' in module.";
+//         throw pdal::pdal_error(oss.str());
+//     }
+//     if (!PyCallable_Check(m_function))
+//         throw pdal::pdal_error(getTraceback());
+// }
+//
 
-    Py_INCREF(m_bytecode);
-
-    m_module = PyImport_ExecCodeModule(const_cast<char*>(m_script.module()),
-        m_bytecode);
-    if (!m_module)
-        throw pdal::pdal_error(getTraceback());
-
-    m_dictionary = PyModule_GetDict(m_module);
-    m_function = PyDict_GetItemString(m_dictionary, m_script.function());
-    if (!m_function)
-    {
-        std::ostringstream oss;
-        oss << "unable to find target function '" << m_script.function() <<
-            "' in module.";
-        throw pdal::pdal_error(oss.str());
-    }
-    if (!PyCallable_Check(m_function))
-        throw pdal::pdal_error(getTraceback());
-}
-
-
-void Invocation::cleanup()
+void Array::cleanup()
 {
     Py_XDECREF(m_varsIn);
     Py_XDECREF(m_varsOut);
@@ -115,17 +115,17 @@ void Invocation::cleanup()
     m_pyInputArrays.clear();
     Py_XDECREF(m_bytecode);
 }
-
-
-void Invocation::resetArguments()
-{
-    cleanup();
-    m_varsIn = PyDict_New();
-    m_varsOut = PyDict_New();
-}
-
-
-void Invocation::insertArgument(std::string const& name, uint8_t* data,
+//
+//
+// void Array::resetArguments()
+// {
+//     cleanup();
+//     m_varsIn = PyDict_New();
+//     m_varsOut = PyDict_New();
+// }
+// //
+//
+void Array::insertArgument(std::string const& name, uint8_t* data,
     Dimension::Type::Enum t, point_count_t count)
 {
     npy_intp mydims = count;
@@ -144,7 +144,7 @@ void Invocation::insertArgument(std::string const& name, uint8_t* data,
 }
 
 
-void *Invocation::extractResult(std::string const& name,
+void *Array::extractResult(std::string const& name,
     Dimension::Type::Enum t)
 {
     PyObject* xarr = PyDict_GetItemString(m_varsOut, name.c_str());
@@ -200,7 +200,7 @@ void *Invocation::extractResult(std::string const& name,
 }
 
 
-void Invocation::getOutputNames(std::vector<std::string>& names)
+void Array::getOutputNames(std::vector<std::string>& names)
 {
     names.clear();
 
@@ -221,7 +221,7 @@ void Invocation::getOutputNames(std::vector<std::string>& names)
 }
 
 
-int Invocation::getPythonDataType(Dimension::Type::Enum t)
+int Array::getPythonDataType(Dimension::Type::Enum t)
 {
     using namespace Dimension;
 
@@ -256,33 +256,33 @@ int Invocation::getPythonDataType(Dimension::Type::Enum t)
 }
 
 
-bool Invocation::hasOutputVariable(const std::string& name) const
+bool Array::hasOutputVariable(const std::string& name) const
 {
     return (PyDict_GetItemString(m_varsOut, name.c_str()) != NULL);
 }
 
 
-bool Invocation::execute()
-{
-    if (!m_bytecode)
-        throw pdal::pdal_error("No code has been compiled");
-
-    Py_INCREF(m_varsIn);
-    Py_INCREF(m_varsOut);
-    m_scriptArgs = PyTuple_New(2);
-    PyTuple_SetItem(m_scriptArgs, 0, m_varsIn);
-    PyTuple_SetItem(m_scriptArgs, 1, m_varsOut);
-
-    m_scriptResult = PyObject_CallObject(m_function, m_scriptArgs);
-    if (!m_scriptResult)
-        throw pdal::pdal_error(getTraceback());
-
-    if (!PyBool_Check(m_scriptResult))
-        throw pdal::pdal_error("User function return value not a boolean type.");
-
-    return (m_scriptResult == Py_True);
-}
-
+// bool Array::execute()
+// {
+//     if (!m_bytecode)
+//         throw pdal::pdal_error("No code has been compiled");
+//
+//     Py_INCREF(m_varsIn);
+//     Py_INCREF(m_varsOut);
+//     m_scriptArgs = PyTuple_New(2);
+//     PyTuple_SetItem(m_scriptArgs, 0, m_varsIn);
+//     PyTuple_SetItem(m_scriptArgs, 1, m_varsOut);
+//
+//     m_scriptResult = PyObject_CallObject(m_function, m_scriptArgs);
+//     if (!m_scriptResult)
+//         throw pdal::pdal_error(getTraceback());
+//
+//     if (!PyBool_Check(m_scriptResult))
+//         throw pdal::pdal_error("User function return value not a boolean type.");
+//
+//     return (m_scriptResult == Py_True);
+// }
+//
 } // namespace plang
 } // namespace pdal
 

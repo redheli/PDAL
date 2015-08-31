@@ -1,5 +1,6 @@
 
 set(plang_srcs
+    Array.cpp
     BufferedInvocation.cpp
     Invocation.cpp
     Environment.cpp
@@ -8,6 +9,7 @@ set(plang_srcs
 )
 
 set(plang_headers
+    "${PDAL_HEADERS_DIR}/plang/Array.hpp"
     "${PDAL_HEADERS_DIR}/plang/BufferedInvocation.hpp"
     "${PDAL_HEADERS_DIR}/plang/Invocation.hpp"
     "${PDAL_HEADERS_DIR}/plang/Environment.hpp"

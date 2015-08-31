@@ -87,7 +87,7 @@ PointViewSet PredicateFilter::run(PointViewPtr view)
     m_pythonMethod->execute();
 
     if (!m_pythonMethod->hasOutputVariable("Mask"))
-        throw plang::error("Mask variable not set in predicate "
+        throw pdal::pdal_error("Mask variable not set in predicate "
             "filter function.");
 
     PointViewPtr outview = view->makeNew();

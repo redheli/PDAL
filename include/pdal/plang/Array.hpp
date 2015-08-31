@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright (c) 2012, Michael P. Gerlek (mpg@flaxen.com)
+* Copyright (c) 2011, Michael P. Gerlek (mpg@flaxen.com)
 *
 * All rights reserved.
 *
@@ -13,7 +13,7 @@
 *       notice, this list of conditions and the following disclaimer in
 *       the documentation and/or other materials provided
 *       with the distribution.
-*     * Neither the name of Hobu, Inc. or Flaxen Consulting LLC nor the
+*     * Neither the name of Hobu, Inc. or Flaxen Geo Consulting nor the
 *       names of its contributors may be used to endorse or promote
 *       products derived from this software without specific prior
 *       written permission.
@@ -35,33 +35,63 @@
 #pragma once
 
 #include <pdal/pdal_internal.hpp>
+#include <pdal/PointView.hpp>
 
-#include "Redirector.hpp"
+#include "Script.hpp"
+#include "Environment.hpp"
+
+#include <pdal/Dimension.hpp>
 
 namespace pdal
 {
 namespace plang
 {
 
-std::string getTraceback();
 
-class Environment;
-typedef Environment *EnvironmentPtr;
-
-class PDAL_DLL Environment
+class PDAL_DLL Array
 {
 public:
-    Environment();
-    ~Environment();
+    Array();
+    ~Array();
 
-    // these just forward into the Redirector class
-    void set_stdout(std::ostream* ostr);
-    void reset_stdout();
 
-    static EnvironmentPtr get();
+    // creates a Python variable pointing to a (one dimensional) C array
+    // adds the new variable to the arguments dictionary
+    void insertArgument(std::string const& name,
+                        uint8_t* data,
+                        Dimension::Type::Enum t,
+                        point_count_t count);
+    void *extractResult(const std::string& name,
+                        Dimension::Type::Enum dataType);
+
+    bool hasOutputVariable(const std::string& name) const;
+
+
+    // after a call to execute, this function will return you a list of
+    // the names in the 'outs' dictionary (this is used by the
+    // BufferedInvocation class to find the returned data -- faster to
+    // examine what's already in there than it is to iterate over all the
+    // possible names from the schema)
+    void getOutputNames(std::vector<std::string>& names);
+
+    static int getPythonDataType(Dimension::Type::Enum t);
 
 private:
-    Redirector m_redirector;
+    void cleanup();
+
+
+    PyObject* m_bytecode;
+    PyObject* m_module;
+    PyObject* m_dictionary;
+    PyObject* m_function;
+
+    PyObject* m_varsIn;
+    PyObject* m_varsOut;
+    PyObject* m_scriptArgs;
+    PyObject* m_scriptResult;
+    std::vector<PyObject*> m_pyInputArrays;
+
+    Array& operator=(Array const& rhs);
 };
 
 } // namespace plang

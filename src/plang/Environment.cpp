@@ -123,7 +123,7 @@ std::string getTraceback()
 
         tracebackModule = PyImport_ImportModule("traceback");
         if (!tracebackModule)
-            throw error("Unable to load traceback module while "
+            throw pdal::pdal_error("Unable to load traceback module while "
                 "importing numpy inside PDAL.");
 
         tracebackDictionary = PyModule_GetDict(tracebackModule);
@@ -131,11 +131,11 @@ std::string getTraceback()
         tracebackFunction =
             PyDict_GetItemString(tracebackDictionary, "format_exception");
         if (!tracebackFunction)
-            throw error("Unable to find traceback function while "
+            throw pdal::pdal_error("Unable to find traceback function while "
                 "importing numpy inside PDAL.");
 
         if (!PyCallable_Check(tracebackFunction))
-            throw error("Invalid traceback function while importing numpy "
+            throw pdal::pdal_error("Invalid traceback function while importing numpy "
                 "inside PDAL.");
 
         // create an argument for "format exception"

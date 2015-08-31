@@ -351,7 +351,7 @@ TEST_F(PredicateFilterTest, PredicateFilterTest_test5)
     PointTable table;
     filter->prepare(table);
 
-    ASSERT_THROW(filter->execute(table), plang::error);
+    ASSERT_THROW(filter->execute(table), pdal::pdal_error);
 }
 
 TEST_F(PredicateFilterTest, PredicateFilterTest_Pipeline)
