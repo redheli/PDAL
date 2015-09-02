@@ -37,10 +37,7 @@
 #include <pdal/pdal_internal.hpp>
 #include <pdal/PointView.hpp>
 
-#include "Script.hpp"
-#include "Environment.hpp"
 
-#include <pdal/Dimension.hpp>
 
 namespace pdal
 {
@@ -57,14 +54,16 @@ public:
 
     // creates a Python variable pointing to a (one dimensional) C array
     // adds the new variable to the arguments dictionary
-    void insertArgument(std::string const& name,
-                        uint8_t* data,
-                        Dimension::Type::Enum t,
-                        point_count_t count);
+    void update(PointViewPtr view);
+
+    void* getArray(const std::string& name) const;
     void *extractResult(const std::string& name,
                         Dimension::Type::Enum dataType);
+    std::vector<void*> getPythonArrays() const;
 
+    std::vector<std::string> getArrayNames() const;
     bool hasOutputVariable(const std::string& name) const;
+    std::string buildNumpyDescription() const;
 
 
     // after a call to execute, this function will return you a list of
@@ -79,17 +78,9 @@ public:
 private:
     void cleanup();
 
-
-    PyObject* m_bytecode;
-    PyObject* m_module;
-    PyObject* m_dictionary;
-    PyObject* m_function;
-
-    PyObject* m_varsIn;
-    PyObject* m_varsOut;
-    PyObject* m_scriptArgs;
-    PyObject* m_scriptResult;
-    std::vector<PyObject*> m_pyInputArrays;
+    std::map<std::string, void*> m_py_arrays;
+    std::map<void*, std::unique_ptr<std::vector<uint8_t> > > m_data_arrays;
+    PointLayoutPtr m_layout;
 
     Array& operator=(Array const& rhs);
 };

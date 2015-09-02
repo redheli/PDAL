@@ -98,7 +98,7 @@ extensions = [DistutilsExtension("*",
                                    sources,
                                    include_dirs=include_dirs,
                                    library_dirs=library_dirs,
-                                   extra_compile_args=['-std=c++11'],
+                                   extra_compile_args=['-std=c++11','-g','-O0'],
                                    libraries=libraries,
                                    extra_link_args=extra_link_args,)]
 if USE_CYTHON:

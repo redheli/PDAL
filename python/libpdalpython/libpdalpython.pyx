@@ -1,21 +1,57 @@
 # distutils: language = c++
+
+from libcpp.vector cimport vector
 from libcpp.string cimport string
+from libcpp.memory   cimport shared_ptr
+
+import numpy as np
+cimport numpy as np
+
+from cpython cimport PyObject, Py_INCREF
+from cython.operator cimport dereference as deref, preincrement as inc
+
+
+cdef extern from "pdal/plang/Array.hpp" namespace "pdal::plang":
+    cdef cppclass Array:
+        vector[void*] getPythonArrays() except+
+
+
+np.import_array()
 
 cdef extern from "Pipeline.hpp" namespace "libpdalpython":
     cdef cppclass Pipeline:
-        Pipeline(string) except +
+        Pipeline(const char* ) except +
         void execute() except +
-        string getXML()
+        const char* getXML()
+#        vector[PyArrayObject*] getArrays() except +
+        vector[shared_ptr[Array]] getArrays() except +
 
 
 cdef class PyPipeline:
     cdef Pipeline *thisptr      # hold a c++ instance which we're wrapping
-    def __cinit__(self, string xml):
-        self.thisptr = new Pipeline(xml)
+    def __cinit__(self, unicode xml):
+        self.thisptr = new Pipeline(xml.encode('UTF-8'))
     def __dealloc__(self):
         del self.thisptr
-    def get_xml(self):
-        return self.thisptr.getXML()
+
+    property xml:
+        def __get__(self):
+            return self.thisptr.getXML().decode('UTF-8')
+
+    def arrays(self):
+        v = self.thisptr.getArrays()
+        output = []
+        cdef vector[shared_ptr[Array]].iterator it = v.begin()
+        cdef Array* a
+        while it != v.end():
+            ptr = deref(it)
+            a = ptr.get()
+            o = a.getPythonArrays()
+            for t in o:
+                output.append(<object>t)
+            inc(it)
+        return output
+
     def execute(self):
         if not self.thisptr:
             raise Exception("not constructed!")
