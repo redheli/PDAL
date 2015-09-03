@@ -61,7 +61,7 @@ public:
     inline void* getPythonArray() const { return m_py_array; }
 
     bool hasOutputVariable(const std::string& name) const;
-    void* buildNumpyDescription() const;
+    void* buildNumpyDescription(PointViewPtr view) const;
 
 
     // after a call to execute, this function will return you a list of
@@ -78,7 +78,6 @@ private:
 
     void* m_py_array;
     std::unique_ptr<std::vector<uint8_t> > m_data_array;
-    PointLayoutPtr m_layout;
 
     Array& operator=(Array const& rhs);
 };

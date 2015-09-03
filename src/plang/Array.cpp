@@ -76,33 +76,24 @@ Array::~Array()
 
 void Array::cleanup()
 {
-//     for (auto i: m_py_arrays)
-//     {
-//         PyObject* p = (PyObject*)(i.second);
-//         Py_XDECREF(p);
-//     }
-//
-//     for (auto& i: m_data_arrays)
-//     {
-//         i.second.reset(nullptr);
-//     }
-//     m_py_arrays.clear();
-//     m_data_arrays.clear();
+    PyObject* p = (PyObject*)(m_py_array);
+    Py_XDECREF(p);
+    m_data_array.reset();
 }
-void* Array::buildNumpyDescription() const
+void* Array::buildNumpyDescription(PointViewPtr view) const
 {
     std::stringstream oss;
-    Dimension::IdList dims = m_layout->dims();
+    Dimension::IdList dims = view->dims();
 
     PyObject* list = PyList_New(dims.size());
 
     for (Dimension::IdList::size_type i=0; i < dims.size(); ++i)
     {
         Dimension::Id::Enum id = (dims[i]);
-        Dimension::Type::Enum t = m_layout->dimType(id);
-        npy_intp stride = m_layout->dimSize(id);
+        Dimension::Type::Enum t = view->dimType(id);
+        npy_intp stride = view->dimSize(id);
 
-        std::string name = m_layout->dimName(id);
+        std::string name = view->dimName(id);
 
         std::string kind("i");
         Dimension::BaseType::Enum b = Dimension::base(t);
@@ -134,69 +125,49 @@ void Array::update(PointViewPtr view)
     typedef std::unique_ptr<std::vector<uint8_t>> DataPtr;
     cleanup();
     int nd = 1;
-    m_layout = view->layout();
-    Dimension::IdList dims = m_layout->dims();
+    Dimension::IdList dims = view->dims();
     npy_intp mydims = view->size();
     npy_intp* ndims = &mydims;
     std::vector<npy_intp> strides(mydims);
 
 
-    DataPtr pdata( new std::vector<uint8_t>(m_layout->pointSize()* view->size(), 0));
+    DataPtr pdata( new std::vector<uint8_t>(view->pointSize()* view->size(), 0));
 
     uint8_t* sp = pdata.get()->data();
     for (Dimension::IdList::size_type i=0; i < dims.size(); ++i)
     {
         Dimension::Id::Enum id = (dims[i]);
-        Dimension::Type::Enum t = m_layout->dimType(id);
 
-        npy_intp stride = m_layout->dimSize(id);
+        npy_intp stride = view->dimSize(id);
 
         strides [i] = stride;
 
-        std::string name = m_layout->dimName(id);
-
-
-//         uint8_t* p(sp);
-//         for (PointId idx = 0; idx < view->size(); ++idx)
-//         {
-//             view->getRawField(id, idx, p);
-//             p += stride;
-//         }
 
     }
     int flags = NPY_CARRAY | NPY_BEHAVED; // NPY_BEHAVED
-//         const int pyDataType = getPythonDataType(t);
-//         PyObject* pyArray = PyArray_SimpleNewFromData(nd, ndims, pyDataType, sp);
-//         PyObject* pyName = PyBytes_FromString(name.c_str());
-//         PyObject* pyAttrName = PyBytes_FromString("name");
-//         int did_set = PyObject_SetItem(pyArray, pyAttrName, pyName);
-//         std::cout << "did_set: " << did_set << std::endl;
-
 
     PyArray_Descr *dtype(0);
-    PyObject * dtype_list = (PyObject*) buildNumpyDescription();
-    if (!dtype_list) throw pdal_error("we're nothing!");
+    PyObject * dtype_list = (PyObject*) buildNumpyDescription(view);
+    if (!dtype_list)
+        throw pdal_error("Unable to build numpy array description string");
     int did_convert = PyArray_DescrConverter(dtype_list, &dtype);
-    if (did_convert == NPY_FAIL) throw pdal_error("did not convert!");
+    if (did_convert == NPY_FAIL)
+        throw pdal_error("Unable to convert numpy array description");
     Py_XDECREF(dtype_list);
-    PyObject * pyArray = PyArray_NewFromDescr(&PyArray_Type, dtype, nd, ndims, strides.data(), sp, flags, NULL);
-//         PyObject* pyArray = PyArray_New(&PyArray_Type, nd, ndims, pyDataType,
-//             strides, tp, 0, flags, NULL);
 
-// copy the data
-//
+    PyObject * pyArray = PyArray_NewFromDescr(&PyArray_Type, dtype, nd, ndims, strides.data(), sp, flags, NULL);
+
+    // copy the data into the numpy array
     uint8_t* p(sp);
     for (PointId idx = 0; idx < view->size(); ++idx)
     {
-
         for (Dimension::IdList::size_type i=0; i < dims.size(); ++i)
         {
-        Dimension::Id::Enum id = (dims[i]);
-        npy_intp stride = m_layout->dimSize(id);
+            Dimension::Id::Enum id = (dims[i]);
+            npy_intp stride = view->dimSize(id);
             view->getRawField(id, idx, p);
             p += stride;
         }
-
     }
 
     m_py_array = pyArray;
