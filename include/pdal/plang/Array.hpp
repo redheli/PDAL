@@ -56,14 +56,12 @@ public:
     // adds the new variable to the arguments dictionary
     void update(PointViewPtr view);
 
-    void* getArray(const std::string& name) const;
     void *extractResult(const std::string& name,
                         Dimension::Type::Enum dataType);
-    std::vector<void*> getPythonArrays() const;
+    inline void* getPythonArray() const { return m_py_array; }
 
-    std::vector<std::string> getArrayNames() const;
     bool hasOutputVariable(const std::string& name) const;
-    std::string buildNumpyDescription() const;
+    void* buildNumpyDescription() const;
 
 
     // after a call to execute, this function will return you a list of
@@ -78,8 +76,8 @@ public:
 private:
     void cleanup();
 
-    std::map<std::string, void*> m_py_arrays;
-    std::map<void*, std::unique_ptr<std::vector<uint8_t> > > m_data_arrays;
+    void* m_py_array;
+    std::unique_ptr<std::vector<uint8_t> > m_data_array;
     PointLayoutPtr m_layout;
 
     Array& operator=(Array const& rhs);

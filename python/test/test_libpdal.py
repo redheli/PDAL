@@ -21,7 +21,7 @@ class TestConstruction(unittest.TestCase):
       for a in arrays:
           print (a[1])
       import pdb;pdb.set_trace()
-      self.assertEqual(len(arrays), 16)
+      self.assertEqual(len(arrays), 1)
 
 def test_suite():
     return unittest.TestSuite(

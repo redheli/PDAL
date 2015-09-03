@@ -57,6 +57,7 @@ namespace plang
 {
 
 Array::Array()
+    : m_py_array(0)
 {
     auto initNumpy = []()
     {
@@ -75,43 +76,58 @@ Array::~Array()
 
 void Array::cleanup()
 {
-    for (auto i: m_py_arrays)
-    {
-        PyObject* p = (PyObject*)(i.second);
-        Py_XDECREF(p);
-    }
-
-    for (auto& i: m_data_arrays)
-    {
-        i.second.reset(nullptr);
-    }
-    m_py_arrays.clear();
-    m_data_arrays.clear();
+//     for (auto i: m_py_arrays)
+//     {
+//         PyObject* p = (PyObject*)(i.second);
+//         Py_XDECREF(p);
+//     }
+//
+//     for (auto& i: m_data_arrays)
+//     {
+//         i.second.reset(nullptr);
+//     }
+//     m_py_arrays.clear();
+//     m_data_arrays.clear();
 }
-std::string Array::buildNumpyDescription() const
+void* Array::buildNumpyDescription() const
 {
-    std::string output;
     std::stringstream oss;
     Dimension::IdList dims = m_layout->dims();
+
+    PyObject* list = PyList_New(dims.size());
 
     for (Dimension::IdList::size_type i=0; i < dims.size(); ++i)
     {
         Dimension::Id::Enum id = (dims[i]);
         Dimension::Type::Enum t = m_layout->dimType(id);
-        const int pyDataType = getPythonDataType(t);
-
-        PyArray_Descr *dtype = PyArray_DescrNewFromType(pyDataType);
-        Py_INCREF(dtype);
         npy_intp stride = m_layout->dimSize(id);
 
         std::string name = m_layout->dimName(id);
+
+        std::string kind("i");
+        Dimension::BaseType::Enum b = Dimension::base(t);
+        if (b == Dimension::BaseType::Unsigned)
+            kind = "u";
+        else if (b == Dimension::BaseType::Floating)
+            kind = "f";
+        PyObject* pyName = PyUnicode_FromString(name.c_str());
+
+        oss << kind << stride;
+        PyObject* pyFormat = PyUnicode_FromString(oss.str().c_str());
+
+        PyObject* row = PyTuple_New(2);
+        PyTuple_SetItem(row, 0, pyName);
+        PyTuple_SetItem(row, 1, pyFormat);
+
+        PyList_SetItem(list, i, row);
+
+        oss.str("");
     }
-
-
-
-
-
-    return output;
+//     PyObject* obj = PyUnicode_AsASCIIString(PyObject_Str(list));
+//     const char* s = PyBytes_AsString(obj);
+//     std::string output(s);
+    return (void*) list;
+//     return output;
 }
 void Array::update(PointViewPtr view)
 {
@@ -122,73 +138,73 @@ void Array::update(PointViewPtr view)
     Dimension::IdList dims = m_layout->dims();
     npy_intp mydims = view->size();
     npy_intp* ndims = &mydims;
+    std::vector<npy_intp> strides(mydims);
 
+
+    DataPtr pdata( new std::vector<uint8_t>(m_layout->pointSize()* view->size(), 0));
+
+    uint8_t* sp = pdata.get()->data();
     for (Dimension::IdList::size_type i=0; i < dims.size(); ++i)
     {
         Dimension::Id::Enum id = (dims[i]);
         Dimension::Type::Enum t = m_layout->dimType(id);
 
         npy_intp stride = m_layout->dimSize(id);
-        npy_intp* strides = &stride;
+
+        strides [i] = stride;
 
         std::string name = m_layout->dimName(id);
-        std::cout << "name: " << name << " size: " << stride << std::endl;
 
-        DataPtr pdata( new std::vector<uint8_t>(stride * view->size(), 0));
-        uint8_t* sp = pdata.get()->data();
 
-        uint8_t* p(sp);
-        for (PointId idx = 0; idx < view->size(); ++idx)
+//         uint8_t* p(sp);
+//         for (PointId idx = 0; idx < view->size(); ++idx)
+//         {
+//             view->getRawField(id, idx, p);
+//             p += stride;
+//         }
+
+    }
+    int flags = NPY_CARRAY | NPY_BEHAVED; // NPY_BEHAVED
+//         const int pyDataType = getPythonDataType(t);
+//         PyObject* pyArray = PyArray_SimpleNewFromData(nd, ndims, pyDataType, sp);
+//         PyObject* pyName = PyBytes_FromString(name.c_str());
+//         PyObject* pyAttrName = PyBytes_FromString("name");
+//         int did_set = PyObject_SetItem(pyArray, pyAttrName, pyName);
+//         std::cout << "did_set: " << did_set << std::endl;
+
+
+    PyArray_Descr *dtype(0);
+    PyObject * dtype_list = (PyObject*) buildNumpyDescription();
+    if (!dtype_list) throw pdal_error("we're nothing!");
+    int did_convert = PyArray_DescrConverter(dtype_list, &dtype);
+    if (did_convert == NPY_FAIL) throw pdal_error("did not convert!");
+    Py_XDECREF(dtype_list);
+    PyObject * pyArray = PyArray_NewFromDescr(&PyArray_Type, dtype, nd, ndims, strides.data(), sp, flags, NULL);
+//         PyObject* pyArray = PyArray_New(&PyArray_Type, nd, ndims, pyDataType,
+//             strides, tp, 0, flags, NULL);
+
+// copy the data
+//
+    uint8_t* p(sp);
+    for (PointId idx = 0; idx < view->size(); ++idx)
+    {
+
+        for (Dimension::IdList::size_type i=0; i < dims.size(); ++i)
         {
+        Dimension::Id::Enum id = (dims[i]);
+        npy_intp stride = m_layout->dimSize(id);
             view->getRawField(id, idx, p);
             p += stride;
         }
 
-        int flags = NPY_CARRAY; // NPY_BEHAVED
-        const int pyDataType = getPythonDataType(t);
-        PyObject* pyArray = PyArray_SimpleNewFromData(nd, ndims, pyDataType, sp);
-        PyObject* pyName = PyBytes_FromString(name.c_str());
-        PyObject* pyAttrName = PyBytes_FromString("name");
-        int did_set = PyObject_SetItem(pyArray, pyAttrName, pyName);
-        std::cout << "did_set: " << did_set << std::endl;
-//         PyObject* pyArray = PyArray_New(&PyArray_Type, nd, ndims, pyDataType,
-//             strides, tp, 0, flags, NULL);
-
-        m_py_arrays.insert(std::pair<std::string, PyObject*>(name,pyArray));
-        m_data_arrays.insert(std::make_pair((void*)pyArray, std::move(pdata)));
     }
 
-}
-
-void* Array::getArray(std::string const& name) const
-{
-    auto found = m_py_arrays.find(name);
-    if (found != m_py_arrays.end())
-        return found->second;
-    else
-        return 0;
-}
-
-std::vector<void*> Array::getPythonArrays() const
-{
-    std::vector<void*> output;
-    for (auto i: m_py_arrays)
-    {
-        output.push_back(i.second);
-    }
-
-    return output;
+    m_py_array = pyArray;
+    m_data_array = std::move(pdata);
 
 }
-std::vector<std::string> Array::getArrayNames() const
-{
-    std::vector<std::string> output;
-    for (auto i: m_py_arrays)
-    {
-        output.push_back(i.first);
-    }
-    return output;
-}
+
+
 
 void *Array::extractResult(std::string const& name,
     Dimension::Type::Enum t)

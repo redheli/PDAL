@@ -13,7 +13,7 @@ from cython.operator cimport dereference as deref, preincrement as inc
 
 cdef extern from "pdal/plang/Array.hpp" namespace "pdal::plang":
     cdef cppclass Array:
-        vector[void*] getPythonArrays() except+
+        void* getPythonArray() except+
 
 
 np.import_array()
@@ -23,7 +23,6 @@ cdef extern from "Pipeline.hpp" namespace "libpdalpython":
         Pipeline(const char* ) except +
         void execute() except +
         const char* getXML()
-#        vector[PyArrayObject*] getArrays() except +
         vector[shared_ptr[Array]] getArrays() except +
 
 
@@ -46,9 +45,8 @@ cdef class PyPipeline:
         while it != v.end():
             ptr = deref(it)
             a = ptr.get()
-            o = a.getPythonArrays()
-            for t in o:
-                output.append(<object>t)
+            o = a.getPythonArray()
+            output.append(<object>o)
             inc(it)
         return output
 
