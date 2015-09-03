@@ -18,8 +18,9 @@ class TestConstruction(unittest.TestCase):
       r = libpdalpython.PyPipeline(xml)
       r.execute()
       arrays = r.arrays()
-      for a in arrays:
-          print (a[1])
+      a = arrays[0]
+      print (a[0])
+      print (a[1])
       import pdb;pdb.set_trace()
       self.assertEqual(len(arrays), 1)
 

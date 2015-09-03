@@ -77,7 +77,9 @@ private:
     void cleanup();
 
     void* m_py_array;
-    std::unique_ptr<std::vector<uint8_t> > m_data_array;
+    std::vector<uint8_t>* m_data_array;
+//     std::unique_ptr<std::vector<uint8_t> > m_data_array;
+    PointLayoutPtr m_layout;
 
     Array& operator=(Array const& rhs);
 };
