@@ -2,21 +2,16 @@
 
 from libcpp.vector cimport vector
 from libcpp.string cimport string
-from libcpp.memory   cimport shared_ptr
 
-import numpy as np
 cimport numpy as np
+np.import_array()
 
 from cpython cimport PyObject, Py_INCREF
 from cython.operator cimport dereference as deref, preincrement as inc
 
-
 cdef extern from "pdal/plang/Array.hpp" namespace "pdal::plang":
     cdef cppclass Array:
         void* getPythonArray() except+
-
-
-np.import_array()
 
 cdef extern from "Pipeline.hpp" namespace "libpdalpython":
     cdef cppclass Pipeline:
@@ -24,7 +19,6 @@ cdef extern from "Pipeline.hpp" namespace "libpdalpython":
         void execute() except +
         const char* getXML()
         vector[Array*] getArrays() except +
-
 
 cdef class PyPipeline:
     cdef Pipeline *thisptr      # hold a c++ instance which we're wrapping
