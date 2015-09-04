@@ -30,7 +30,7 @@ void Pipeline::execute()
     strm << m_xml;
 //     bool isWriter = reader.readPipeline(strm);
     reader.readPipeline(strm);
-    m_manager.execute();
+    pdal::point_count_t count = m_manager.execute();
 #ifdef PDAL_HAVE_LIBXML2
     pdal::XMLSchema schema(m_manager.pointTable().layout());
     m_schema = schema.xml();
@@ -51,7 +51,7 @@ std::vector<PArray> Pipeline::getArrays() const
 
     for (auto i: pvset)
     {
-        PArray array(new pdal::plang::Array);
+        PArray array = new pdal::plang::Array;
         array->update(i);
         output.push_back(array);
     }

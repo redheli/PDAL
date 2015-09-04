@@ -51,35 +51,18 @@ public:
     Array();
     ~Array();
 
-
-    // creates a Python variable pointing to a (one dimensional) C array
-    // adds the new variable to the arguments dictionary
     void update(PointViewPtr view);
 
-    void *extractResult(const std::string& name,
-                        Dimension::Type::Enum dataType);
     inline void* getPythonArray() const { return m_py_array; }
 
-    bool hasOutputVariable(const std::string& name) const;
-    void* buildNumpyDescription(PointViewPtr view) const;
-
-
-    // after a call to execute, this function will return you a list of
-    // the names in the 'outs' dictionary (this is used by the
-    // BufferedInvocation class to find the returned data -- faster to
-    // examine what's already in there than it is to iterate over all the
-    // possible names from the schema)
-    void getOutputNames(std::vector<std::string>& names);
-
-    static int getPythonDataType(Dimension::Type::Enum t);
 
 private:
     void cleanup();
+    void* buildNumpyDescription(PointViewPtr view) const;
+    static int getPythonDataType(Dimension::Type::Enum t);
 
     void* m_py_array;
-    std::vector<uint8_t>* m_data_array;
-//     std::unique_ptr<std::vector<uint8_t> > m_data_array;
-    PointLayoutPtr m_layout;
+    std::unique_ptr<std::vector<uint8_t> > m_data_array;
 
     Array& operator=(Array const& rhs);
 };

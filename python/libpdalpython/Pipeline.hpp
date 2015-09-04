@@ -18,7 +18,8 @@
 
 namespace libpdalpython
 {
-    typedef std::shared_ptr<pdal::plang::Array> PArray;
+//     typedef std::shared_ptr<pdal::plang::Array> PArray;
+    typedef pdal::plang::Array* PArray;
 class Pipeline {
 public:
     Pipeline(std::string const& xml);

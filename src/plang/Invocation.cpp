@@ -44,7 +44,7 @@
 #undef tolower
 #undef isspace
 
-//#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 
 #define NO_IMPORT_ARRAY
 #define PY_ARRAY_UNIQUE_SYMBOL PDAL_ARRAY_API
@@ -134,7 +134,7 @@ void Invocation::insertArgument(std::string const& name, uint8_t* data,
     npy_intp* dims = &mydims;
     npy_intp stride = Dimension::size(t);
     npy_intp* strides = &stride;
-    int flags = NPY_CARRAY; // NPY_BEHAVED
+    int flags = NPY_ARRAY_CARRAY; // NPY_BEHAVED
 
     const int pyDataType = getPythonDataType(t);
 
@@ -229,25 +229,25 @@ int Invocation::getPythonDataType(Dimension::Type::Enum t)
     switch (t)
     {
     case Type::Float:
-        return PyArray_FLOAT;
+        return NPY_FLOAT;
     case Type::Double:
-        return PyArray_DOUBLE;
+        return NPY_DOUBLE;
     case Type::Signed8:
-        return PyArray_BYTE;
+        return NPY_BYTE;
     case Type::Signed16:
-        return PyArray_SHORT;
+        return NPY_SHORT;
     case Type::Signed32:
-        return PyArray_INT;
+        return NPY_INT;
     case Type::Signed64:
-        return PyArray_LONGLONG;
+        return NPY_LONGLONG;
     case Type::Unsigned8:
-        return PyArray_UBYTE;
+        return NPY_UBYTE;
     case Type::Unsigned16:
-        return PyArray_USHORT;
+        return NPY_USHORT;
     case Type::Unsigned32:
-        return PyArray_UINT;
+        return NPY_UINT;
     case Type::Unsigned64:
-        return PyArray_ULONGLONG;
+        return NPY_ULONGLONG;
     default:
         return -1;
     }

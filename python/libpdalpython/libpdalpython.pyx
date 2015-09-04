@@ -23,7 +23,7 @@ cdef extern from "Pipeline.hpp" namespace "libpdalpython":
         Pipeline(const char* ) except +
         void execute() except +
         const char* getXML()
-        vector[shared_ptr[Array]] getArrays() except +
+        vector[Array*] getArrays() except +
 
 
 cdef class PyPipeline:
@@ -40,11 +40,11 @@ cdef class PyPipeline:
     def arrays(self):
         v = self.thisptr.getArrays()
         output = []
-        cdef vector[shared_ptr[Array]].iterator it = v.begin()
+        cdef vector[Array*].iterator it = v.begin()
         cdef Array* a
         while it != v.end():
             ptr = deref(it)
-            a = ptr.get()
+            a = ptr#.get()
             o = a.getPythonArray()
             output.append(<object>o)
             inc(it)
@@ -52,6 +52,6 @@ cdef class PyPipeline:
 
     def execute(self):
         if not self.thisptr:
-            raise Exception("not constructed!")
+            raise Exception("C++ Pipeline object not constructed!")
         self.thisptr.execute()
 
