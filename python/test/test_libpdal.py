@@ -21,6 +21,7 @@ class TestConstruction(unittest.TestCase):
       a = arrays[0]
       print (a[0])
       print (a[1])
+      print (a[2])
       import pdb;pdb.set_trace()
       self.assertEqual(len(arrays), 1)
 

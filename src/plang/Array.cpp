@@ -94,7 +94,10 @@ void* Array::buildNumpyDescription(PointViewPtr view) const
     std::stringstream oss;
     Dimension::IdList dims = view->dims();
 
-    PyObject* list = PyList_New(dims.size());
+    PyObject* dict = PyDict_New();
+    PyObject* sizes = PyList_New(dims.size());
+    PyObject* formats = PyList_New(dims.size());
+    PyObject* titles = PyList_New(dims.size());
 
     for (Dimension::IdList::size_type i=0; i < dims.size(); ++i)
     {
@@ -110,24 +113,28 @@ void* Array::buildNumpyDescription(PointViewPtr view) const
             kind = "u";
         else if (b == Dimension::BaseType::Floating)
             kind = "f";
-        PyObject* pyName = PyUnicode_FromString(name.c_str());
 
         oss << kind << stride;
+        PyObject* pySize = PyLong_FromLong(stride);
+        PyObject* pyTitle = PyUnicode_FromString(name.c_str());
         PyObject* pyFormat = PyUnicode_FromString(oss.str().c_str());
 
-        PyObject* row = PyTuple_New(2);
-        PyTuple_SetItem(row, 0, pyName);
-        PyTuple_SetItem(row, 1, pyFormat);
-
-        PyList_SetItem(list, i, row);
+        PyList_SetItem(sizes, i, pySize);
+        PyList_SetItem(titles, i, pyTitle);
+        PyList_SetItem(formats, i, pyFormat);
 
         oss.str("");
     }
-    PyObject* obj = PyUnicode_AsASCIIString(PyObject_Str(list));
+
+    PyDict_SetItemString(dict, "names", titles);
+    PyDict_SetItemString(dict, "formats", formats);
+
+
+    PyObject* obj = PyUnicode_AsASCIIString(PyObject_Str(dict));
     const char* s = PyBytes_AsString(obj);
     std::string output(s);
     std::cout << "array: " << output << std::endl;
-    return (void*) list;
+    return (void*) dict;
 //     return output;
 }
 void Array::update(PointViewPtr view)
@@ -159,37 +166,35 @@ void Array::update(PointViewPtr view)
         std::cout << " " << s;
     }
     std::cout << std::endl;
-//         const int pyDataType = getPythonDataType(t);
-//         PyObject* pyArray = PyArray_SimpleNewFromData(nd, ndims, pyDataType, sp);
-//         PyObject* pyName = PyBytes_FromString(name.c_str());
-//         PyObject* pyAttrName = PyBytes_FromString("name");
-//         int did_set = PyObject_SetItem(pyArray, pyAttrName, pyName);
-//         std::cout << "did_set: " << did_set << std::endl;
-
 
     PyArray_Descr *dtype(0);
     PyObject * dtype_list = (PyObject*)buildNumpyDescription(view);
     if (!dtype_list) throw pdal_error("we're nothing!");
+//     int did_convert = PyArray_DescrAlignConverter(dtype_list, &dtype);
     int did_convert = PyArray_DescrConverter(dtype_list, &dtype);
     if (did_convert == NPY_FAIL) throw pdal_error("did not convert!");
 //     Py_XDECREF(dtype_list);
 
-//     int flags = NPY_CARRAY;
-    int flags = NPY_C_CONTIGUOUS;
-    PyObject * pyArray = PyArray_NewFromDescr(&PyArray_Type, dtype, nd, ndims, strides.data(), sp, flags, NULL);
+    int flags = NPY_CARRAY;
+//     int flags = NPY_C_CONTIGUOUS;
+    PyObject * pyArray = PyArray_NewFromDescr(&PyArray_Type, dtype, nd, ndims, 0, sp, flags, NULL);
 
 // copy the data
 //
     uint8_t* p(sp);
 
-    for (PointId idx = 0; idx < view->size(); ++idx)
+    DimTypeList types = view->dimTypes();
+    for (PointId idx = 0; idx < view->size(); idx++)
     {
         p = sp + (view->pointSize() * idx);
-        for (auto d: dims)
-        {
-            view->getRawField(d, idx, p);
-            p += view->dimSize(d);
-        }
+        view->getPackedPoint(types, idx, (char*)p);
+        p += 12;
+//         p = sp + (view->pointSize() * idx);
+//         for (auto d: dims)
+//         {
+//             view->getRawField(d, idx, p);
+//             p += view->dimSize(d);
+//         }
 
     }
 
