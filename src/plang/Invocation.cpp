@@ -78,7 +78,6 @@ Invocation::~Invocation()
 
 void Invocation::compile()
 {
-    plang::Environment::get();
     m_bytecode = Py_CompileString(m_script.source(), m_script.module(),
         Py_file_input);
     if (!m_bytecode)

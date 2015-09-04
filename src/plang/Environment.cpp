@@ -38,7 +38,6 @@
 #include <numpy/arrayobject.h>
 
 #include <sstream>
-#include <mutex>
 
 #ifdef PDAL_COMPILER_MSVC
 #  pragma warning(disable: 4127)  // conditional expression is constant
@@ -60,20 +59,11 @@ namespace pdal
 namespace plang
 {
 
-static Environment* g_environment=0;
+static Environment g_environment;
 
 EnvironmentPtr Environment::get()
 {
-    static std::once_flag flag;
-
-    auto init = []()
-    {
-        g_environment = new Environment();
-    };
-
-    std::call_once(flag, init);
-
-    return g_environment;
+    return &g_environment;
 }
 
 
