@@ -1,4 +1,6 @@
-import libpdalpython
+import pdal
+from pdal import libpdalpython
+# import pdal.libpdalpython
 import unittest
 
 def fetch_xml(filename):
@@ -19,7 +21,7 @@ class TestPDALArray(unittest.TestCase):
     xml = fetch_xml('../test/data/pipeline/pipeline_read.xml')
     r = libpdalpython.PyPipeline(xml)
     r.execute()
-    self.assertEqual(len(r.xml), 2142)
+    self.assertEqual(len(r.xml), 2184)
 
   def test_array(self):
     """Can we fetch PDAL data as a numpy array"""

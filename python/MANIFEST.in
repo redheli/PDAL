@@ -3,4 +3,4 @@ exclude *.txt
 exclude MANIFEST.in
 include CHANGES.txt CREDITS.txt LICENSE.txt README.rst VERSION.txt
 recursive-include tests *.py *.txt
-recursive-include libpdalpython/ *.pyx
+recursive-include pdal/ *.pyx

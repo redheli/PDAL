@@ -2,7 +2,7 @@
 
 from libcpp.vector cimport vector
 from libcpp.string cimport string
-
+from cpython.version cimport PY_MAJOR_VERSION
 cimport numpy as np
 np.import_array()
 
@@ -23,7 +23,11 @@ cdef extern from "Pipeline.hpp" namespace "libpdalpython":
 cdef class PyPipeline:
     cdef Pipeline *thisptr      # hold a c++ instance which we're wrapping
     def __cinit__(self, unicode xml):
-        self.thisptr = new Pipeline(xml.encode('UTF-8'))
+        cdef char* x
+        if PY_MAJOR_VERSION >= 3:
+            self.thisptr = new Pipeline(xml.encode('UTF-8'))
+        else:
+            self.thisptr = new Pipeline(xml)
     def __dealloc__(self):
         del self.thisptr
 

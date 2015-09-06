@@ -92,7 +92,7 @@ library_dirs.append('../lib')
 libraries.append('pdalcpp')
 libraries.append('pdal_plang')
 
-sources=['libpdalpython/libpdalpython'+ext,"libpdalpython/Pipeline.cpp",  ]
+sources=['pdal/libpdalpython'+ext,"pdal/Pipeline.cpp",  ]
 
 extensions = [DistutilsExtension("*",
                                    sources,
