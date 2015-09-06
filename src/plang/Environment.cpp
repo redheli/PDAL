@@ -34,6 +34,7 @@
 
 #include <pdal/plang/Environment.hpp>
 #include <pdal/plang/Redirector.hpp>
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #define PY_ARRAY_UNIQUE_SYMBOL PDAL_ARRAY_API
 #include <numpy/arrayobject.h>
 
@@ -168,7 +169,7 @@ std::string getTraceback()
 
             mssg << p;
 #else
-            mssg << PyString_AsString(PyList_GetItem(output, i));
+            mssg << PyUnicode_AsString(PyList_GetItem(output, i));
 #endif
         }
 
@@ -199,6 +200,77 @@ std::string getTraceback()
 
     return mssg.str();
 }
+
+PyObject *fromMetadata(MetadataNode m)
+{
+    std::string name = m.name();
+    std::string value = m.value();
+    std::string type = m.type();
+    std::string description = m.description();
+
+    MetadataNodeList children = m.children();
+    PyObject *submeta = NULL;
+    if (children.size())
+    {
+        submeta = PyList_New(0);
+        for (MetadataNode& child : children)
+            PyList_Append(submeta, fromMetadata(child));
+    }
+    PyObject *data = PyTuple_New(5);
+    PyTuple_SetItem(data, 0, PyUnicode_FromString(name.data()));
+    PyTuple_SetItem(data, 1, PyUnicode_FromString(value.data()));
+    PyTuple_SetItem(data, 2, PyUnicode_FromString(type.data()));
+    PyTuple_SetItem(data, 3, PyUnicode_FromString(description.data()));
+    PyTuple_SetItem(data, 4, submeta);
+
+    return data;
+}
+
+void addMetadata(PyObject *list, MetadataNode m)
+{
+    if (!PyList_Check(list))
+        return;
+
+    for (Py_ssize_t i = 0; i < PyList_Size(list); ++i)
+    {
+        PyObject *tuple = PyList_GetItem(list, i);
+        if (!PyTuple_Check(tuple) || PyTuple_Size(tuple) != 5)
+            continue;
+
+        PyObject *o;
+        o = PyTuple_GetItem(tuple, 0);
+        if (!o || !PyUnicode_Check(o))
+            continue;
+        PyObject* unicode = PyUnicode_AsASCIIString(PyObject_Str(o));
+        std::string name = PyBytes_AsString(unicode);
+
+        o = PyTuple_GetItem(tuple, 1);
+        if (!o || !PyUnicode_Check(o))
+            continue;
+        unicode = PyUnicode_AsASCIIString(PyObject_Str(o));
+        std::string value = PyBytes_AsString(unicode);
+
+        o = PyTuple_GetItem(tuple, 2);
+        if (!o || !PyUnicode_Check(o))
+            continue;
+        unicode = PyUnicode_AsASCIIString(PyObject_Str(o));
+        std::string type = PyBytes_AsString(unicode);
+        if (type.empty())
+            type = Metadata::inferType(value);
+
+        o = PyTuple_GetItem(tuple, 3);
+        if (!o || !PyUnicode_Check(o))
+            continue;
+        unicode = PyUnicode_AsASCIIString(PyObject_Str(o));
+        std::string description = PyBytes_AsString(unicode);
+
+        PyObject *submeta = PyTuple_GetItem(tuple, 4);
+        MetadataNode child =  m.add(name, value, type, description);
+        if (submeta)
+            addMetadata(submeta, child);
+    }
+}
+
 
 } // namespace plang
 } // namespace pdal

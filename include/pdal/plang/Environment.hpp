@@ -34,7 +34,18 @@
 
 #pragma once
 
+
+
+// forward declare PyObject so we don't need the python headers everywhere
+// see: http://mail.python.org/pipermail/python-dev/2003-August/037601.html
+#ifndef PyObject_HEAD
+struct _object;
+typedef _object PyObject;
+#endif
+
+
 #include <pdal/pdal_internal.hpp>
+#include <pdal/Metadata.hpp>
 
 #include "Redirector.hpp"
 
@@ -42,6 +53,9 @@ namespace pdal
 {
 namespace plang
 {
+
+PyObject *fromMetadata(MetadataNode m);
+void addMetadata(PyObject *list, MetadataNode m);
 
 std::string getTraceback();
 
