@@ -163,14 +163,10 @@ std::string getTraceback()
 
         for (int i = 0; i < n; i++)
         {
-#if PY_MAJOR_VERSION >= 3
-            PyObject* u = PyUnicode_AsUTF8String(PyList_GetItem(output, i));
-            const char* p = PyBytes_AsString(u);
-
-            mssg << p;
-#else
-            mssg << PyString_AsString(PyList_GetItem(output, i));
-#endif
+            PyObject* u = PyObject_Str(PyList_GetItem(output, i));
+            if (!u) getTraceback();
+            std::string value = PyBytes_AsString(u);
+            mssg << value;
         }
 
         // clean up
@@ -179,16 +175,9 @@ std::string getTraceback()
     }
     else if (value != NULL)
     {
-        PyObject *s = PyObject_Str(value);
-#if PY_MAJOR_VERSION >= 3
-        // const char* text = PyUnicode_AS_DATA(s);
-        PyObject* u = PyUnicode_AsUTF8String(s);
-        const char* text = PyBytes_AsString(u);
-#else
-        const char* text = PyString_AS_STRING(s);
-#endif
-        Py_DECREF(s);
-        mssg << text;
+        PyObject* u = PyObject_Str(value);
+        std::string value = PyBytes_AsString(u);
+        mssg << value;
     }
     else
         mssg << "unknown error that we are unable to get a traceback for."
@@ -223,20 +212,11 @@ PyObject *fromMetadata(MetadataNode m)
     PyTuple_SetItem(data, 3, PyUnicode_FromString(description.data()));
     PyTuple_SetItem(data, 4, submeta);
 
-            PyObject* u = PyObject_Str(data);
-        std::string output = PyString_AsString(u);
-        std::cout << "output: " << output << std::endl;
-
-
     return data;
 }
 
 void addMetadata(PyObject *list, MetadataNode m)
 {
-
-            PyObject* u = PyObject_Str(list);
-        std::string output = PyString_AsString(u);
-        std::cout << "output: " << output << std::endl;
 
     if (!PyList_Check(list))
         return;
@@ -251,43 +231,29 @@ void addMetadata(PyObject *list, MetadataNode m)
         o = PyTuple_GetItem(tuple, 0);
         if (!o || !PyUnicode_FromObject(o))
             continue;
-#if PY_MAJOR_VERSION >= 3
-        PyObject* unicode = PyUnicode_AsASCIIString(PyObject_Str(o));
-        std::string name = PyBytes_AsString(unicode);
-#else
-        std::string name = PyString_AsString(PyUnicode_FromObject(o));
-#endif
+        PyObject* unicode_name = PyUnicode_AsUTF8String(PyUnicode_FromObject(o));
+        std::string name = PyBytes_AsString(unicode_name);
 
         o = PyTuple_GetItem(tuple, 1);
         if (!o || !PyUnicode_Check(PyUnicode_FromObject(o)))
             continue;
-#if PY_MAJOR_VERSION >= 3
-        PyObject* unicode = PyUnicode_AsASCIIString(PyObject_Str(o));
-        std::string value = PyBytes_AsString(unicode);
-#else
-        std::string value = PyString_AsString(PyObject_Str(o));
-#endif
+
+        PyObject* unicode_value = PyUnicode_AsUTF8String(PyUnicode_FromObject(o));
+        std::string value = PyBytes_AsString(unicode_value);
+
         o = PyTuple_GetItem(tuple, 2);
         if (!o || !PyUnicode_Check(PyUnicode_FromObject(o)))
             continue;
-#if PY_MAJOR_VERSION >= 3
-        PyObject* unicode = PyUnicode_AsASCIIString(PyObject_Str(o));
-        std::string type = PyBytes_AsString(unicode);
-#else
-        std::string type = PyString_AsString(PyObject_Str(o));
-#endif
+        PyObject* unicode_type = PyUnicode_AsUTF8String(PyUnicode_FromObject(o));
+        std::string type = PyBytes_AsString(unicode_type);
         if (type.empty())
             type = Metadata::inferType(value);
 
         o = PyTuple_GetItem(tuple, 3);
         if (!o || !PyUnicode_Check(PyUnicode_FromObject(o)))
             continue;
-#if PY_MAJOR_VERSION >= 3
-        PyObject* unicode = PyUnicode_AsASCIIString(PyObject_Str(o));
-        std::string description = PyBytes_AsString(unicode);
-#else
-        std::string description = PyString_AsString(PyObject_Str(o));
-#endif
+        PyObject* unicode_description = PyUnicode_AsUTF8String(PyUnicode_FromObject(o));
+        std::string description= PyBytes_AsString(unicode_description);
 
         PyObject *submeta = PyTuple_GetItem(tuple, 4);
         MetadataNode child =  m.add(name, value, type, description);
