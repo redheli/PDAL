@@ -169,7 +169,7 @@ std::string getTraceback()
 
             mssg << p;
 #else
-            mssg << PyUnicode_AsString(PyList_GetItem(output, i));
+            mssg << PyString_AsString(PyList_GetItem(output, i));
 #endif
         }
 
@@ -223,11 +223,21 @@ PyObject *fromMetadata(MetadataNode m)
     PyTuple_SetItem(data, 3, PyUnicode_FromString(description.data()));
     PyTuple_SetItem(data, 4, submeta);
 
+            PyObject* u = PyObject_Str(data);
+        std::string output = PyString_AsString(u);
+        std::cout << "output: " << output << std::endl;
+
+
     return data;
 }
 
 void addMetadata(PyObject *list, MetadataNode m)
 {
+
+            PyObject* u = PyObject_Str(list);
+        std::string output = PyString_AsString(u);
+        std::cout << "output: " << output << std::endl;
+
     if (!PyList_Check(list))
         return;
 
@@ -239,30 +249,45 @@ void addMetadata(PyObject *list, MetadataNode m)
 
         PyObject *o;
         o = PyTuple_GetItem(tuple, 0);
-        if (!o || !PyUnicode_Check(o))
+        if (!o || !PyUnicode_FromObject(o))
             continue;
+#if PY_MAJOR_VERSION >= 3
         PyObject* unicode = PyUnicode_AsASCIIString(PyObject_Str(o));
         std::string name = PyBytes_AsString(unicode);
+#else
+        std::string name = PyString_AsString(PyUnicode_FromObject(o));
+#endif
 
         o = PyTuple_GetItem(tuple, 1);
-        if (!o || !PyUnicode_Check(o))
+        if (!o || !PyUnicode_Check(PyUnicode_FromObject(o)))
             continue;
-        unicode = PyUnicode_AsASCIIString(PyObject_Str(o));
+#if PY_MAJOR_VERSION >= 3
+        PyObject* unicode = PyUnicode_AsASCIIString(PyObject_Str(o));
         std::string value = PyBytes_AsString(unicode);
-
+#else
+        std::string value = PyString_AsString(PyObject_Str(o));
+#endif
         o = PyTuple_GetItem(tuple, 2);
-        if (!o || !PyUnicode_Check(o))
+        if (!o || !PyUnicode_Check(PyUnicode_FromObject(o)))
             continue;
-        unicode = PyUnicode_AsASCIIString(PyObject_Str(o));
+#if PY_MAJOR_VERSION >= 3
+        PyObject* unicode = PyUnicode_AsASCIIString(PyObject_Str(o));
         std::string type = PyBytes_AsString(unicode);
+#else
+        std::string type = PyString_AsString(PyObject_Str(o));
+#endif
         if (type.empty())
             type = Metadata::inferType(value);
 
         o = PyTuple_GetItem(tuple, 3);
-        if (!o || !PyUnicode_Check(o))
+        if (!o || !PyUnicode_Check(PyUnicode_FromObject(o)))
             continue;
-        unicode = PyUnicode_AsASCIIString(PyObject_Str(o));
+#if PY_MAJOR_VERSION >= 3
+        PyObject* unicode = PyUnicode_AsASCIIString(PyObject_Str(o));
         std::string description = PyBytes_AsString(unicode);
+#else
+        std::string description = PyString_AsString(PyObject_Str(o));
+#endif
 
         PyObject *submeta = PyTuple_GetItem(tuple, 4);
         MetadataNode child =  m.add(name, value, type, description);

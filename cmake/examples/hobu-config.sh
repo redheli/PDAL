@@ -57,10 +57,14 @@ CC=$CC CXX=$CXX cmake   -G "$CONFIG"  \
         -DJSONCPP_ROOT_DIR=${USR_LOCAL}/include/jsoncpp \
         -DSQLITE3_INCLUDE_DIR=${SQLITE_HOME}/include \
         -DSQLITE3_LIBRARY=${SQLITE_HOME}/lib/libsqlite3.${SO_EXT} \
-        -DPYTHON_EXECUTABLE=/usr/local/bin/python3 \
-        -DPYTHON_LIBRARY=/usr/local/Cellar/python3/3.4.2_1/Frameworks/Python.framework/Versions/3.4/lib/libpython3.4.dylib \
-        -DPYTHON_INCLUDE_DIR=/usr/local/Cellar/python3/3.4.2_1/Frameworks/Python.framework/Versions/3.4/include/python3.4m/ \
+        -DPYTHON_EXECUTABLE=/usr/local/bin/python \
+        -DPYTHON_LIBRARY=/usr/local/Cellar/python/2.7.10_2/Frameworks/Python.framework/Versions/2.7/lib/libpython2.7.dylib \
+        -DPYTHON_INCLUDE_DIR=/usr/local/Cellar/python/2.7.10_2/Frameworks/Python.framework/Versions/2.7/include/python2.7/ \
         -DOCI_CONNECTION="grid/grid@localhost/vm" \
         -DPGPOINTCLOUD_TEST_DB_HOST="localhost"
 
 
+
+#         -DPYTHON_EXECUTABLE=/usr/local/bin/python3 \
+#         -DPYTHON_LIBRARY=/usr/local/Cellar/python3/3.4.2_1/Frameworks/Python.framework/Versions/3.4/lib/libpython3.4.dylib \
+#         -DPYTHON_INCLUDE_DIR=/usr/local/Cellar/python3/3.4.2_1/Frameworks/Python.framework/Versions/3.4/include/python3.4m/ \
