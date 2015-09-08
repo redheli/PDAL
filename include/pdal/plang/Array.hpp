@@ -38,6 +38,12 @@
 #include <pdal/PointView.hpp>
 
 
+// forward declare PyObject so we don't need the python headers everywhere
+// see: http://mail.python.org/pipermail/python-dev/2003-August/037601.html
+#ifndef PyObject_HEAD
+struct _object;
+typedef _object PyObject;
+#endif
 
 namespace pdal
 {
@@ -53,14 +59,14 @@ public:
 
     void update(PointViewPtr view);
 
-    inline void* getPythonArray() const { return m_py_array; }
+    inline PyObject* getPythonArray() const { return m_py_array; }
 
 
 private:
     void cleanup();
-    void* buildNumpyDescription(PointViewPtr view) const;
+    PyObject* buildNumpyDescription(PointViewPtr view) const;
 
-    void* m_py_array;
+    PyObject* m_py_array;
     std::unique_ptr<std::vector<uint8_t> > m_data_array;
 
     Array& operator=(Array const& rhs);

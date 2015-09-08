@@ -81,7 +81,7 @@ void Array::cleanup()
     Py_XDECREF(p);
     m_data_array.reset();
 }
-void* Array::buildNumpyDescription(PointViewPtr view) const
+PyObject* Array::buildNumpyDescription(PointViewPtr view) const
 {
 
     // Build up a numpy dtype dictionary
@@ -140,7 +140,7 @@ void* Array::buildNumpyDescription(PointViewPtr view) const
 //     const char* s = PyBytes_AsString(obj);
 //     std::string output(s);
 //     std::cout << "array: " << output << std::endl;
-    return (void*) dict;
+    return dict;
 }
 void Array::update(PointViewPtr view)
 {
