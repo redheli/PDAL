@@ -1,6 +1,5 @@
-prune docs
 exclude *.txt
 exclude MANIFEST.in
-include CHANGES.txt CREDITS.txt LICENSE.txt README.rst VERSION.txt
-recursive-include tests *.py *.txt
-recursive-include pdal/ *.pyx
+include CHANGES.txt README.rst VERSION.txt
+recursive-include test *.py
+recursive-include pdal *.pyx

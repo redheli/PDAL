@@ -11,14 +11,9 @@
 # NB: within this setup scripts, software versions are evaluated according
 # to https://www.python.org/dev/peps/pep-0440/.
 
-import errno
-import glob
 import logging
 import os
 import platform
-import re
-import shutil
-import subprocess
 import sys
 import numpy
 from Cython.Build import cythonize
@@ -42,7 +37,7 @@ log = logging.getLogger(__file__)
 if 'all' in sys.warnoptions:
     log.level = logging.DEBUG
 
-# Get the version from the shapely module
+# Get the version from the pdal module
 module_version = None
 with open('pdal/__init__.py', 'r') as fp:
     for line in fp:
@@ -55,8 +50,6 @@ with open('pdal/__init__.py', 'r') as fp:
 if not module_version:
     raise ValueError("Could not determine PDAL's version")
 
-# log.debug('GEOS shared library: %s %s', geos_version_string, geos_version)
-
 # Handle UTF-8 encoding of certain text files.
 open_kwds = {}
 if sys.version_info >= (3,):
@@ -68,13 +61,10 @@ with open('VERSION.txt', 'w', **open_kwds) as fp:
 with open('README.rst', 'r', **open_kwds) as fp:
     readme = fp.read()
 
-with open('../AUTHORS.txt', 'r', **open_kwds) as fp:
-    credits = fp.read()
-
 with open('CHANGES.txt', 'r', **open_kwds) as fp:
     changes = fp.read()
 
-long_description = readme + '\n\n' + credits + '\n\n' + changes
+long_description = readme + '\n\n' +  changes
 
 include_dirs = []
 library_dirs = []
@@ -83,6 +73,7 @@ extra_link_args = []
 
 from setuptools.extension import Extension as DistutilsExtension
 
+# FIXME: get this stuff from PDAL's pkg-config
 
 include_dirs.append(numpy.get_include())
 include_dirs.append('../include')
@@ -132,7 +123,6 @@ setup_args = dict(
         'Programming Language :: Python :: 3',
         'Topic :: Scientific/Engineering :: GIS',
     ],
-#     data_files         = [('shapely', ['shapely/_geos.pxi'])],
     cmdclass           = {},
 )
 setup(ext_modules=extensions, **setup_args)

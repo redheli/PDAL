@@ -30,7 +30,7 @@ void Pipeline::execute()
     strm << m_xml;
 //     bool isWriter = reader.readPipeline(strm);
     reader.readPipeline(strm);
-    pdal::point_count_t count = m_manager.execute();
+    m_manager.execute();
 #ifdef PDAL_HAVE_LIBXML2
     pdal::XMLSchema schema(m_manager.pointTable().layout());
     m_schema = schema.xml();

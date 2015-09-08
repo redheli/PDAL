@@ -143,5 +143,5 @@ test/data/sbet/pipeline.xml
 
 python/*.egg*
 python/build/*
-python/libpdalpython.so
-python/libpdalpython/libpdalpython.cpp
+python/pdal/libpdalpython.so
+python/pdal/libpdalpython.cpp
