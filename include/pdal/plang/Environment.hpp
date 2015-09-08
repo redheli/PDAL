@@ -46,6 +46,7 @@ typedef _object PyObject;
 
 #include <pdal/pdal_internal.hpp>
 #include <pdal/Metadata.hpp>
+#include <pdal/Dimension.hpp>
 
 #include "Redirector.hpp"
 
@@ -73,6 +74,7 @@ public:
     void reset_stdout();
 
     static EnvironmentPtr get();
+    static int getPythonDataType(Dimension::Type::Enum t);
 
 private:
     Redirector m_redirector;

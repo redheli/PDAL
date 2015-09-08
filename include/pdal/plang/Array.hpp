@@ -59,7 +59,6 @@ public:
 private:
     void cleanup();
     void* buildNumpyDescription(PointViewPtr view) const;
-    static int getPythonDataType(Dimension::Type::Enum t);
 
     void* m_py_array;
     std::unique_ptr<std::vector<uint8_t> > m_data_array;

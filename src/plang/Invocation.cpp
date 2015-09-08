@@ -159,9 +159,14 @@ void Invocation::insertArgument(std::string const& name, uint8_t* data,
     npy_intp* dims = &mydims;
     npy_intp stride = Dimension::size(t);
     npy_intp* strides = &stride;
-    int flags = NPY_ARRAY_CARRAY; // NPY_BEHAVED
 
-    const int pyDataType = getPythonDataType(t);
+#ifdef NPY_ARRAY_CARRAY
+    int flags = NPY_ARRAY_CARRAY;
+#else
+    int flags = NPY_CARRAY;
+#endif
+
+    const int pyDataType = plang::Environment::getPythonDataType(t);
 
     PyObject* pyArray = PyArray_New(&PyArray_Type, nd, dims, pyDataType,
         strides, data, 0, flags, NULL);
@@ -183,7 +188,7 @@ void *Invocation::extractResult(std::string const& name,
     PyArrayObject* arr = (PyArrayObject*)xarr;
 
     npy_intp one = 0;
-    const int pyDataType = getPythonDataType(t);
+    const int pyDataType = pdal::plang::Environment::getPythonDataType(t);
     PyArray_Descr *dtype = PyArray_DESCR(arr);
 
     if (static_cast<uint32_t>(dtype->elsize) != Dimension::size(t))
@@ -244,41 +249,6 @@ void Invocation::getOutputNames(std::vector<std::string>& names)
         if (p)
             names.push_back(p);
     }
-}
-
-
-int Invocation::getPythonDataType(Dimension::Type::Enum t)
-{
-    using namespace Dimension;
-
-    switch (t)
-    {
-    case Type::Float:
-        return NPY_FLOAT;
-    case Type::Double:
-        return NPY_DOUBLE;
-    case Type::Signed8:
-        return NPY_BYTE;
-    case Type::Signed16:
-        return NPY_SHORT;
-    case Type::Signed32:
-        return NPY_INT;
-    case Type::Signed64:
-        return NPY_LONGLONG;
-    case Type::Unsigned8:
-        return NPY_UBYTE;
-    case Type::Unsigned16:
-        return NPY_USHORT;
-    case Type::Unsigned32:
-        return NPY_UINT;
-    case Type::Unsigned64:
-        return NPY_ULONGLONG;
-    default:
-        return -1;
-    }
-    assert(0);
-
-    return -1;
 }
 
 
