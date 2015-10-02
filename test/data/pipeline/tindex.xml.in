@@ -15,7 +15,7 @@
                true
             </Option>
             <Option name="filename">
-                /Users/hobu/dev/git/pdal/test/temp/index.sqlite
+                @CMAKE_SOURCE_DIR@/test/temp/index.sqlite
             </Option>
             <Option name="where">
                 location LIKE '%nteresting.las%'
