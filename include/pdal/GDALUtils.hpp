@@ -75,7 +75,18 @@ public:
     }
 
     void setFromLayer(OGRLayerH layer)
-        { newRef(OSRClone(OGR_L_GetSpatialRef(layer))); }
+        {
+            if (layer)
+            {
+                OGRSpatialReferenceH s = OGR_L_GetSpatialRef(layer);
+                if (s)
+                {
+                    OGRSpatialReferenceH clone = OSRClone(s);
+                    newRef(clone);
+                }
+
+            }
+        }
     operator bool () const
         { return m_ref.get() != NULL; }
     OGRSpatialReferenceH get() const

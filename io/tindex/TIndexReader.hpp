@@ -39,6 +39,7 @@
 #include <pdal/GlobalEnvironment.hpp>
 #include <merge/MergeFilter.hpp>
 #include <pdal/StageFactory.hpp>
+#include <pdal/GDALUtils.hpp>
 
 extern "C" int32_t TIndexReader_ExitFunc();
 extern "C" PF_ExitFunc TIndexReader_InitPlugin();
@@ -98,11 +99,13 @@ private:
     std::string m_wkt;
     std::string m_tgtSrsString;
     std::string m_assignSrsString;
+    std::string m_filterSRS;
     std::string m_attributeFilter;
     std::string m_dialect;
     BOX2D m_boundary;
     std::string m_sql;
 
+    std::unique_ptr<gdal::SpatialRef> m_out_ref;
     void *m_dataset;
     void *m_layer;
 

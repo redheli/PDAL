@@ -149,9 +149,12 @@ void TIndexReader::processOptions(const Options& options)
         m_wkt = boundary.toWKT();
     }
     m_tgtSrsString = options.getValueOrDefault<std::string>("t_srs", "EPSG:4326");
+    m_filterSRS = options.getValueOrDefault<std::string>("filter_srs", "");
     m_assignSrsString = options.getValueOrDefault<std::string>("a_srs", "");
     m_attributeFilter = options.getValueOrDefault<std::string>("where", "");
     m_dialect = options.getValueOrDefault<std::string>("dialect", "OGRSQL");
+
+    m_out_ref.reset(new gdal::SpatialRef());
 }
 
 void TIndexReader::addDimensions(PointLayoutPtr layout)
@@ -172,8 +175,8 @@ pdal::Dimension::IdList TIndexReader::getDefaultDimensions()
 
 void TIndexReader::ready(PointTableRef table)
 {
-
-    log()->get(LogLevel::Debug) << "Opening file " << m_filename <<std::endl;
+    log()->get(LogLevel::Debug) << "Opening file "
+                                << m_filename <<std::endl;
 
     m_dataset = OGROpen(m_filename.c_str(), FALSE, NULL);
     if (!m_dataset)
@@ -184,42 +187,57 @@ void TIndexReader::ready(PointTableRef table)
     }
 
     OGRGeometryH geometry(0);
-    std::unique_ptr<gdal::SpatialRef> out_ref(new gdal::SpatialRef(m_tgtSrsString));
-    std::unique_ptr<gdal::Geometry> wkt_g;
-    if (m_wkt.size())
-    {
-        // Set layer query bounds from WKT/bounds
-        log()->get(LogLevel::Debug) << "Creating OGR spatial filter " << m_assignSrsString <<std::endl;
-        log()->get(LogLevel::Debug) << "wkt: '" << m_wkt << "'" << std::endl;
-
-        gdal::SpatialRef assign(m_assignSrsString);
-        gdal::Geometry before(m_wkt, assign);
-        before.transform(*out_ref);
-
-//         if (m_assignSrsString.size())
-//             wkt_ref.reset ( new gdal::SpatialRef(m_assignSrsString));
-        wkt_g.reset (new gdal::Geometry(before.wkt(), *out_ref));
-//         wkt_g->transform(*out_ref);
-
-
-        geometry = wkt_g->get();
-        m_wkt = wkt_g->wkt();
-    log()->get(LogLevel::Debug3) << "assign wkt: '" << wkt_g->wkt() << "'" << std::endl;
-    }
-
     if (m_sql.size())
     {
-        m_layer = OGR_DS_ExecuteSQL(m_dataset, m_sql.c_str(), geometry, m_dialect.c_str());
+        m_layer = OGR_DS_ExecuteSQL(m_dataset,
+                                    m_sql.c_str(),
+                                    geometry,
+                                    m_dialect.c_str());
     } else
     {
-        m_layer = OGR_DS_GetLayerByName(m_dataset, m_layerName.c_str());
-        OGR_L_SetSpatialFilter(m_layer, geometry);
+        m_layer = OGR_DS_GetLayerByName(m_dataset,
+                                        m_layerName.c_str());
     }
     if (!m_layer)
     {
         std::stringstream oss;
-        oss << "unable to open layer '" << m_layerName << "' from OGR datasource '" << m_filename << "'";
+        oss << "unable to open layer '"
+            << m_layerName << "' from OGR datasource '"
+            << m_filename << "'";
         throw pdal::pdal_error(oss.str());
+    }
+
+    m_out_ref->setFromLayer(m_layer);
+
+    // Override the SRS if the user set one, otherwise, take it
+    // from the layer
+    if (m_tgtSrsString.size())
+        m_out_ref.reset(new gdal::SpatialRef(m_tgtSrsString));
+    else
+        m_out_ref.reset(new gdal::SpatialRef(m_out_ref->wkt()));
+
+    SpatialReference pdal_ref(m_out_ref->wkt());
+    setSpatialReference(pdal_ref);
+
+    std::unique_ptr<gdal::Geometry> wkt_g;
+
+    // If the user set either explicit 'polygon' or 'boundary' options
+    // we will filter by that geometry. The user can set a 'filter_srs'
+    // option to override the SRS of the input geometry and we will
+    // reproject to the output projection as needed.
+    if (m_wkt.size())
+    {
+        // Reproject the given wkt to the output SRS so
+        // filtering/cropping works
+        gdal::SpatialRef assign(m_filterSRS);
+        gdal::Geometry before(m_wkt, assign);
+        before.transform(*m_out_ref);
+
+        wkt_g.reset (new gdal::Geometry(before.wkt(), *m_out_ref));
+
+        geometry = wkt_g->get();
+        m_wkt = wkt_g->wkt();
+        OGR_L_SetSpatialFilter(m_layer, geometry);
     }
 
     if (m_attributeFilter.size())
@@ -228,14 +246,12 @@ void TIndexReader::ready(PointTableRef table)
         if (err != OGRERR_NONE)
         {
             std::stringstream oss;
-            oss << "unable to set attribute filter '" << m_attributeFilter << "' for OGR datasource '" << m_filename << "'";
+            oss << "unable to set attribute filter '"
+                << m_attributeFilter << "' for OGR datasource '"
+                << m_filename << "'";
             throw pdal::pdal_error(oss.str());
         }
     }
-    gdal::SpatialRef srs;
-    srs.setFromLayer(m_layer);
-    SpatialReference pdal_ref(srs.wkt());
-    setSpatialReference(pdal_ref);
 
     m_files = getFiles();
 
@@ -245,14 +261,17 @@ void TIndexReader::ready(PointTableRef table)
 
     for (auto f : m_files)
     {
-        log()->get(LogLevel::Debug) << "Adding file " << f.m_filename << " to merge filter" <<std::endl;
+        log()->get(LogLevel::Debug) << "Adding file "
+                                    << f.m_filename
+                                    << " to merge filter" <<std::endl;
         Stage *premerge = NULL;
         std::string driver = m_factory.inferReaderDriver(f.m_filename);
         Stage *reader = m_factory.createStage(driver, true);
         if (!reader)
         {
             std::stringstream out;
-            out << "Unable to create reader for file '" << f.m_filename << "'.";
+            out << "Unable to create reader for file '"
+                << f.m_filename << "'.";
             throw pdal_error(out.str());
         }
         Options readerOptions;
@@ -260,26 +279,30 @@ void TIndexReader::ready(PointTableRef table)
         reader->setOptions(readerOptions);
         premerge = reader;
 
-        if (m_tgtSrsString != f.m_srs && (m_tgtSrsString.size() && f.m_srs.size()))
+        if (m_tgtSrsString != f.m_srs &&
+            (m_tgtSrsString.size() && f.m_srs.size()))
         {
             Stage *repro = m_factory.createStage("filters.reprojection", true);
             repro->setInput(*reader);
             Options reproOptions;
             reproOptions.add("out_srs", m_tgtSrsString);
             reproOptions.add("in_srs", f.m_srs);
-             log()->get(LogLevel::Debug2) << "Repro = " << m_tgtSrsString << "/" << f.m_srs << "!\n";
+            log()->get(LogLevel::Debug2) << "Repro = "
+                                         << m_tgtSrsString << "/"
+                                         << f.m_srs << "!\n";
             repro->setOptions(reproOptions);
             premerge = repro;
         }
 
-        // WKT is set, even if we're using a bounding box for fitering, so
+        // WKT is set, even if we're using a bounding box for filtering, so
         // can be used as a test here.
         if (!m_wkt.empty())
         {
             Stage *crop = m_factory.createStage("filters.crop", true);
             crop->setOptions(cropOptions);
             crop->setInput(*premerge);
-            log()->get(LogLevel::Debug) << "Cropping data with wkt" <<std::endl;
+            log()->get(LogLevel::Debug3) << "Cropping data with wkt '"
+                                         << m_wkt << "'" << std::endl;
             premerge = crop;
         }
 
@@ -299,7 +322,8 @@ PointViewSet TIndexReader::run(PointViewPtr view)
 
 TIndexReader::~TIndexReader()
 {
-    if (m_sql.size() && m_dataset)
+    if (!m_dataset) return;
+    if (m_sql.size())
     {
         // We were created with OGR_DS_ExecuteSQL which needs to have
         // its layer explicitly released
@@ -307,8 +331,7 @@ TIndexReader::~TIndexReader()
     }
     else
     {
-        if (m_dataset)
-            OGR_DS_Destroy(m_dataset);
+        OGR_DS_Destroy(m_dataset);
     }
 
     m_layer = 0;
