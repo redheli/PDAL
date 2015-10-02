@@ -62,6 +62,7 @@
 #include <qfit/QfitReader.hpp>
 #include <sbet/SbetReader.hpp>
 #include <terrasolid/TerrasolidReader.hpp>
+#include <tindex/TIndexReader.hpp>
 
 // writers
 #include <bpf/BpfWriter.hpp>
@@ -210,6 +211,7 @@ StageFactory::StageFactory(bool no_plugins)
     PluginManager::initializePlugin(QfitReader_InitPlugin);
     PluginManager::initializePlugin(SbetReader_InitPlugin);
     PluginManager::initializePlugin(TerrasolidReader_InitPlugin);
+    PluginManager::initializePlugin(TIndexReader_InitPlugin);
 
     // writers
     PluginManager::initializePlugin(BpfWriter_InitPlugin);
