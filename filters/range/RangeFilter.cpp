@@ -34,65 +34,134 @@
 
 #include "RangeFilter.hpp"
 
-#include <cmath>
+#include <pdal/util/Utils.hpp>
+
+#include <cctype>
 #include <limits>
 #include <map>
 #include <string>
-#include <utility>
 #include <vector>
 
 namespace pdal
 {
 
-static PluginInfo const s_info = PluginInfo(
-    "filters.range",
-    "Pass only points given a dimension/range.",
-    "http://pdal.io/stages/filters.range.html" );
+static PluginInfo const s_info =
+    PluginInfo("filters.range", "Pass only points given a dimension/range.",
+               "http://pdal.io/stages/filters.range.html");
 
 CREATE_STATIC_PLUGIN(1, 0, RangeFilter, Filter, s_info)
 
-std::string RangeFilter::getName() const { return s_info.name; }
+std::string RangeFilter::getName() const
+{
+    return s_info.name;
+}
+
+namespace
+{
+
+RangeFilter::Range parseRange(const std::string& r)
+{ 
+    std::string::size_type pos, count;
+    bool ilb = true;
+    bool iub = true;
+    const char *start;
+    char *end;
+    std::string name;
+    double ub, lb;
+
+    try
+    {
+        pos = 0;
+        // Skip leading whitespace.
+        count = Utils::extract(r, pos, (int(*)(int))std::isspace);
+        pos += count;
+
+        count = Utils::extract(r, pos, (int(*)(int))std::isalpha);
+        if (count == 0)
+           throw std::string("No dimension name.");
+        name = r.substr(pos, count);
+        pos += count;
+
+        if (r[pos] == '(')
+            ilb = false;
+        else if (r[pos] != '[')
+            throw std::string("Missing '(' or '['.");
+        pos++;
+
+        // Extract lower bound.
+        start = r.data() + pos;
+        lb = std::strtod(start, &end);
+        if (start == end)
+            lb = std::numeric_limits<double>::min();
+        pos += (end - start);
+
+        count = Utils::extract(r, pos, (int(*)(int))std::isspace);
+        pos += count;
+
+        if (r[pos] != ':')
+            throw std::string("Missing ':' limit separator.");
+        pos++;
+
+        start = r.data() + pos;
+        ub = std::strtod(start, &end);
+        if (start == end)
+            ub = std::numeric_limits<double>::max();
+        pos += (end - start);
+
+        count = Utils::extract(r, pos, (int(*)(int))std::isspace);
+        pos += count;
+
+        if (r[pos] == ')')
+            iub = false;
+        else if (r[pos] != ']')
+            throw std::string("Missing ')' or ']'.");
+        pos++;
+
+        count = Utils::extract(r, pos, (int(*)(int))std::isspace);
+        pos += count;
+
+        if (pos != r.size())
+            throw std::string("Invalid characters following valid range.");
+    }
+    catch (std::string s)
+    {
+        std::ostringstream oss;
+        oss << "filters.range: invalid --limits option: '" << r << "': " << s;
+        throw pdal_error(oss.str());
+    }
+    return RangeFilter::Range(name, lb, ub, ilb, iub);
+}
+
+}
+
 
 void RangeFilter::processOptions(const Options& options)
 {
-    std::vector<Option> dimensions = options.getOptions("dimension");
-    if (dimensions.size() == 0)
-        throw pdal_error("No dimensions given");
+    StringList rangeString = options.getValueOrDefault<StringList>("limits");
 
-    for (auto const& d : dimensions)
-    {
-        std::string name = d.getValue<std::string>();
-        boost::optional<Options const&> dimensionOptions = d.getOptions();
-        if (!dimensionOptions)
-            throw pdal_error("No dimension options");
+    if (rangeString.empty())
+        throw pdal_error("filters.range missing required --limits option.");
 
-        double val =dimensionOptions->getValueOrDefault<double>("equals",
-            (std::numeric_limits<double>::max)());
-        double min = dimensionOptions->getValueOrDefault<double>("min",
-            -(std::numeric_limits<double>::max)());
-        double max = dimensionOptions->getValueOrDefault<double>("max",
-            (std::numeric_limits<double>::max)());
-
-        if (val != (std::numeric_limits<double>::max)())
-            min = max = val;
-
-        Range range;
-        range.min = min;
-        range.max = max;
-
-        m_name_map.insert(std::make_pair(name, range));
-    }
+    for (auto const& r : rangeString)
+        m_range_list.push_back(parseRange(r));
 }
 
-void RangeFilter::ready(PointTableRef table)
+
+void RangeFilter::prepared(PointTableRef table)
 {
     const PointLayoutPtr layout(table.layout());
-    for (auto const& d : m_name_map)
+
+    for (auto const& d : m_range_list)
     {
-        m_dimensions_map.insert(
-                std::make_pair(
-                    layout->findDim(d.first),
-                    d.second));
+        Dimension::Id::Enum id = layout->findDim(d.m_name);
+        if (id == Dimension::Id::Unknown)
+        {
+            std::ostringstream oss;
+            oss << "Invalid dimension name in filters.range --limits "
+                "option: '" << d.m_name << "'.";
+            throw pdal_error(oss.str());
+        }
+        m_dimensions_map[id] = d;
     }
 }
 
@@ -110,11 +179,29 @@ PointViewSet RangeFilter::run(PointViewPtr inView)
         for (auto const& d : m_dimensions_map)
         {
             double v = inView->getFieldAs<double>(d.first, i);
-            if (v < d.second.min || v > d.second.max)
+            if (d.second.m_inclusive_lower_bound)
             {
-                keep_point = false;
-                break;
+                if (v < d.second.m_lower_bound)
+                    keep_point = false;
             }
+            else
+            {
+                if (v <= d.second.m_lower_bound)
+                    keep_point = false;
+            }
+            if (d.second.m_inclusive_upper_bound)
+            {
+                if (v > d.second.m_upper_bound)
+                    keep_point = false;
+            }
+            else
+            {
+                if (v >= d.second.m_upper_bound)
+                    keep_point = false;
+            }
+
+            if (keep_point)
+                break;
         }
         if (keep_point)
             outView->appendPoint(*inView, i);
@@ -126,4 +213,3 @@ PointViewSet RangeFilter::run(PointViewPtr inView)
 }
 
 } // pdal
-
