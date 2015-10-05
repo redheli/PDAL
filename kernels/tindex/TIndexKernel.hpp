@@ -112,7 +112,7 @@ private:
     void *m_layer;
     std::string m_tgtSrsString;
     std::string m_assignSrsString;
-    bool m_fastBoundary;
+    bool m_hexBoundary;
 };
 
 } // namespace pdal

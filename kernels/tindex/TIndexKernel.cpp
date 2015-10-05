@@ -85,7 +85,7 @@ TIndexKernel::TIndexKernel()
     , m_merge(false)
     , m_dataset(NULL)
     , m_layer(NULL)
-    , m_fastBoundary(false)
+    , m_hexBoundary(false)
 
 {
     m_log.setLeader("pdal tindex");
@@ -104,9 +104,9 @@ void TIndexKernel::addSwitches()
             "OGR-readable/writeable tile index output")
         ("filespec", po::value<std::string>(&m_filespec),
             "Build: Pattern of files to index. Merge: Output filename")
-        ("fast_boundary", po::value<bool>(&m_fastBoundary)->
+        ("hex_boundary", po::value<bool>(&m_hexBoundary)->
             zero_tokens()->implicit_value(true),
-            "use extend instead of exact boundary")
+            "compute tessellated hexagon boundary instead of using bounds")
         ("lyr_name", po::value<std::string>(&m_layerName),
             "OGR layer name to write into datasource")
         ("tindex_name", po::value<std::string>(&m_tileIndexColumnName)->
@@ -553,7 +553,7 @@ TIndexKernel::FileInfo TIndexKernel::getFileInfo(KernelFactory& factory,
     ops.add("filename", filename);
     s->setOptions(ops);
 
-    if (m_fastBoundary)
+    if (!m_hexBoundary)
     {
         QuickInfo qi = s->preview();
 
