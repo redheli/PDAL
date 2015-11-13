@@ -41,6 +41,7 @@
 #include <pdal/Compression.hpp>
 #include <pdal/PDALUtils.hpp>
 #include <pdal/PointView.hpp>
+#include <pdal/util/Algorithm.hpp>
 #include <pdal/util/Inserter.hpp>
 #include <pdal/util/OStream.hpp>
 #include <pdal/util/Utils.hpp>
@@ -416,6 +417,13 @@ void LasWriter::setVlrsFromMetadata(MetadataNode& forward)
 /// \param  srs - Active spatial reference.
 void LasWriter::setVlrsFromSpatialRef()
 {
+    // Delete any existing spatial ref VLRs.
+    deleteVlr(TRANSFORM_USER_ID, GEOTIFF_DIRECTORY_RECORD_ID);
+    deleteVlr(TRANSFORM_USER_ID, GEOTIFF_DOUBLES_RECORD_ID);
+    deleteVlr(TRANSFORM_USER_ID, GEOTIFF_ASCII_RECORD_ID);
+    deleteVlr(TRANSFORM_USER_ID, WKT_RECORD_ID);
+    deleteVlr(LIBLAS_USER_ID, WKT_RECORD_ID);
+
     VlrList vlrs;
 
 #ifdef PDAL_HAVE_LIBGEOTIFF
@@ -520,6 +528,19 @@ void LasWriter::addVlr(const std::string& userId, uint16_t recordId,
         VariableLengthRecord vlr(userId, recordId, description, data);
         m_vlrs.push_back(std::move(vlr));
     }
+}
+
+/// Delete a VLR from the vlr list.
+///
+void LasWriter::deleteVlr(const std::string& userId, uint16_t recordId)
+{
+    auto matches = [&userId, recordId](const VariableLengthRecord& vlr)
+    {
+        return vlr.matches(userId, recordId);
+    };
+
+    Utils::remove_if(m_vlrs, matches);
+    Utils::remove_if(m_eVlrs, matches);
 }
 
 

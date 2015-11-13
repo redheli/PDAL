@@ -94,7 +94,6 @@ void ReprojectionFilter::processOptions(const Options& options)
         try
         {
             m_inSRS = options.getValueOrThrow<pdal::SpatialReference>("in_srs");
-std::cerr << "Read SRS = " << m_inSRS << "!\n";
             m_inferInputSRS = false;
         }
         catch (std::invalid_argument)
@@ -143,6 +142,8 @@ void ReprojectionFilter::createTransform(PointView *view)
         }
     }
 
+    if (m_in_ref_ptr)
+        OSRDestroySpatialReference(m_in_ref_ptr);
     m_in_ref_ptr = OSRNewSpatialReference(0);
 
     int result =
@@ -157,6 +158,8 @@ void ReprojectionFilter::createTransform(PointView *view)
             "in the source file.";
         throw pdal_error(oss.str());
     }
+    if (m_transform_ptr)
+        OCTDestroyCoordinateTransformation(m_transform_ptr);
     m_transform_ptr = OCTNewCoordinateTransformation(m_in_ref_ptr,
         m_out_ref_ptr);
     if (!m_transform_ptr)
