@@ -587,12 +587,14 @@ TIndexKernel::FileInfo TIndexKernel::getFileInfo(KernelFactory& factory,
         hexer->setInput(*s);
 
         hexer->prepare(table);
-        hexer->execute(table);
+        PointViewSet set = hexer->execute(table);
 
         fileInfo.m_boundary =
             table.metadata().findChild("filters.hexbin:boundary").value();
-        if (!table.spatialRef().empty())
-            fileInfo.m_srs = table.spatialRef().getWKT();
+
+        PointViewPtr v = *set.begin();
+        if (!v->spatialReference().empty())
+            fileInfo.m_srs = v->spatialReference().getWKT();
     }
 
     FileUtils::fileTimes(filename, &fileInfo.m_ctime, &fileInfo.m_mtime);
