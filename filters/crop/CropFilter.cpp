@@ -201,7 +201,6 @@ void CropFilter::preparePolygon(GeomPkg& g, const SpatialReference& to)
         throw pdal_error("unable to prepare geometry for index-accelerated "
             "intersection");
 }
-#endif
 
 
 void CropFilter::freePolygon(GeomPkg& g, bool freeBase)
@@ -222,6 +221,7 @@ void CropFilter::freePolygon(GeomPkg& g, bool freeBase)
         g.m_geomXform = NULL;
     }
 }
+#endif
 
 
 Options CropFilter::getDefaultOptions()

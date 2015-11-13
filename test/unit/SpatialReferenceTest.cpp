@@ -335,6 +335,7 @@ TEST(SpatialReferenceTest, test_vertical_and_horizontal)
 
 }
 
+#if defined(PDAL_HAVE_LIBGEOTIFF)
 TEST(SpatialReferenceTest, merge)
 {
     Options o1;
@@ -380,3 +381,4 @@ TEST(SpatialReferenceTest, merge)
     Support::checkXYZ(Support::temppath("triple.las"),
         Support::datapath("las/test_epsg_4326x3.las"));
 }
+#endif
