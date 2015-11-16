@@ -146,7 +146,8 @@ void HexBin::done(PointTableRef table)
     const double SQRT_3(1.732050808);
     // This is just a little longer than the prependicular distance of the
     // "humps."
-    double tolerance = 1.1 * m_grid->height() / (2 * SQRT_3);
+//    double tolerance = 1.1 * m_grid->height() / (2 * SQRT_3);
+    double tolerance = 1.1 * m_grid->height() / 2;
     m_metadata.add("smoothed_boundary",
         Geometry::smoothPolygon(polygon.str(), tolerance),
         "Smoothed boundary MULTIPOLYGON of domain");

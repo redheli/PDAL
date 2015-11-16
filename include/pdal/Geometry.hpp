@@ -34,6 +34,8 @@
 
 #include <pdal/pdal_types.hpp>
 
+#include <cstdarg>
+
 #ifdef PDAL_HAVE_GEOS
 #include <geos_c.h>
 #endif
