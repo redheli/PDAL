@@ -164,6 +164,11 @@ uint32_t PgReader::fetchPcid() const
 {
     if (m_pcid)
         return m_pcid;
+    else{
+        std::ostringstream oss;
+        oss << "pcid is null, set option pcid is must, as issue (https://github.com/PDAL/PDAL/issues/1046)";
+        throw pdal_error(oss.str());
+    }
 
     log()->get(LogLevel::Debug) << "Fetching pcid ..." << std::endl;
 
