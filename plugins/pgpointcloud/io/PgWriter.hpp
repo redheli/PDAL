@@ -92,6 +92,8 @@ private:
     std::string m_table_name;
     std::string m_column_name;
     std::string m_connection;
+    std::string m_other_column_name;/// non PCPATCH column
+    std::string m_other_data; /// insert value of column of m_other_column_name
     CompressionType::Enum m_patch_compression_type;
     uint32_t m_patch_capacity;
     uint32_t m_srid;

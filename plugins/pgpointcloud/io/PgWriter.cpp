@@ -93,7 +93,10 @@ void PgWriter::processOptions(const Options& options)
     m_column_name = options.getValueOrDefault<std::string>("column", "pa");
     m_schema_name = options.getValueOrDefault<std::string>("schema");
     //
+    m_other_column_name = options.getValueOrDefault<std::string>("other_columns");
+    m_other_data = options.getValueOrDefault<std::string>("other_data");
     // Read compression type and turn into an integer
+
     std::string compression_str =
         options.getValueOrDefault<std::string>("compression", "dimensional");
     m_patch_compression_type = getCompressionType(compression_str);
@@ -465,8 +468,14 @@ void PgWriter::writeTile(const PointViewPtr view)
     }
 
     std::string insert_into("INSERT INTO ");
-    std::string values(" (" + pg_quote_identifier(m_column_name) +
-                       ") VALUES ('");
+    std::string values;
+//    std::string values(" (" + pg_quote_identifier(m_column_name) +
+//                       ") VALUES ('");
+    values = " ( " + pg_quote_identifier(m_column_name);
+    if( !m_other_column_name.empty() ){
+        values += " ,\"" + m_other_column_name+"\"";
+    }
+    values += ") VALUES ('";
 
     m_insert.append(insert_into);
 
@@ -506,6 +515,10 @@ void PgWriter::writeTile(const PointViewPtr view)
 
     m_insert.append(options.str());
     m_insert.append(hexrep);
+    if( !m_other_column_name.empty() ){
+        m_insert.append("','");
+        m_insert.append(m_other_data);
+    }
     m_insert.append("')");
 
     pg_execute(m_session, m_insert);
