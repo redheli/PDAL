@@ -93,6 +93,8 @@ void PgReader::processOptions(const Options& options)
     m_column_name = options.getValueOrDefault<std::string>("column", "pa");
     m_schema_name = options.getValueOrDefault<std::string>("schema", "");
 
+    m_pcid = options.getValueOrDefault<uint32_t>("pcid", 0);
+
     // Read other preferences
     m_where = options.getValueOrDefault<std::string>("where", "");
 

@@ -573,7 +573,7 @@ inline Type::Enum defaultType(Id::Enum id)
     case Id::Z:
         return Double;
     case Id::Intensity:
-        return Unsigned16;
+        return Double;
     case Id::Amplitude:
         return Float;
     case Id::Reflectance:
