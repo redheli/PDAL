@@ -51,22 +51,38 @@
 namespace pdal
 {
 
-static PluginInfo const s_info = PluginInfo(
-    "filters.ground",
-    "Progressive morphological filter",
-    "http://pdal.io/stages/filters.ground.html" );
+static PluginInfo const s_info =
+    PluginInfo("filters.ground", "Progressive morphological filter",
+               "http://pdal.io/stages/filters.ground.html");
 
 CREATE_SHARED_PLUGIN(1, 0, GroundFilter, Filter, s_info)
 
-std::string GroundFilter::getName() const { return s_info.name; }
+std::string GroundFilter::getName() const
+{
+    return s_info.name;
+}
+
+Options GroundFilter::getDefaultOptions()
+{
+    Options options;
+    options.add("max_window_size", 33, "Maximum window size");
+    options.add("slope", 1, "Slope");
+    options.add("max_distance", 2.5, "Maximum distance");
+    options.add("initial_distance", 0.15, "Initial distance");
+    options.add("cell_size", 1, "Cell Size");
+    options.add("classify", true, "Apply classification labels?");
+    options.add("extract", false, "Extract ground returns?");
+    options.add("approximate", false, "Use approximate algorithm?");
+    return options;
+}
 
 void GroundFilter::processOptions(const Options& options)
 {
-    m_maxWindowSize = options.getValueOrDefault<double>("maxWindowSize", 33);
+    m_maxWindowSize = options.getValueOrDefault<double>("max_window_size", 33);
     m_slope = options.getValueOrDefault<double>("slope", 1);
-    m_maxDistance = options.getValueOrDefault<double>("maxDistance", 2.5);
-    m_initialDistance = options.getValueOrDefault<double>("initialDistance", 0.15);
-    m_cellSize = options.getValueOrDefault<double>("cellSize", 1);
+    m_maxDistance = options.getValueOrDefault<double>("max_distance", 2.5);
+    m_initialDistance = options.getValueOrDefault<double>("initial_distance", 0.15);
+    m_cellSize = options.getValueOrDefault<double>("cell_size", 1);
     m_classify = options.getValueOrDefault<bool>("classify", true);
     m_extract = options.getValueOrDefault<bool>("extract", false);
     m_approximate = options.getValueOrDefault<bool>("approximate", false);
@@ -130,7 +146,8 @@ PointViewSet GroundFilter::run(PointViewPtr input)
 
         // run the PMF filter, grabbing indices of ground returns
         pmf.extract(idx->indices);
-    } else
+    }
+    else
     {
         pcl::ApproximateProgressiveMorphologicalFilter<pcl::PointXYZ> pmf;
         pmf.setInputCloud(cloud);
@@ -156,7 +173,9 @@ PointViewSet GroundFilter::run(PointViewPtr input)
             // set the classification label of ground returns as 2
             // (corresponding to ASPRS LAS specification)
             for (const auto& i : idx->indices)
-            { input->setField(Dimension::Id::Classification, i, 2); }
+            {
+                input->setField(Dimension::Id::Classification, i, 2);
+            }
 
             viewSet.insert(input);
         }
@@ -192,4 +211,3 @@ PointViewSet GroundFilter::run(PointViewPtr input)
 }
 
 } // namespace pdal
-

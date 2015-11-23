@@ -48,21 +48,9 @@ TEST(RangeFilterTest, createStage)
     EXPECT_TRUE(filter.get());
 }
 
-TEST(RangeFilterTest, noDimension)
+TEST(RangeFilterTest, noLimits)
 {
     RangeFilter filter;
-
-    PointTable table;
-    EXPECT_THROW(filter.prepare(table), pdal_error);
-}
-
-TEST(RangeFilterTest, noRange)
-{
-    Options rangeOps;
-    rangeOps.add("dimension", "Z");
-
-    RangeFilter filter;
-    filter.setOptions(rangeOps);
 
     PointTable table;
     EXPECT_THROW(filter.prepare(table), pdal_error);
@@ -80,15 +68,8 @@ TEST(RangeFilterTest, singleDimension)
     FauxReader reader;
     reader.setOptions(ops);
 
-    Options range;
-    range.add("min", 4);
-    range.add("max", 6);
-
-    Option dim("dimension", "Z");
-    dim.setOptions(range);
-
     Options rangeOps;
-    rangeOps.add(dim);
+    rangeOps.add("limits", "Z(3.50:6]  ");
 
     RangeFilter filter;
     filter.setOptions(rangeOps);
@@ -118,23 +99,9 @@ TEST(RangeFilterTest, multipleDimensions)
     FauxReader reader;
     reader.setOptions(ops);
 
-    Options y_range;
-    y_range.add("min", 4);
-    y_range.add("max", 6);
-
-    Option y_dim("dimension", "Y");
-    y_dim.setOptions(y_range);
-
-    Options z_range;
-    z_range.add("min", 4);
-    z_range.add("max", 6);
-
-    Option z_dim("dimension", "Z");
-    z_dim.setOptions(z_range);
-
     Options rangeOps;
-    rangeOps.add(y_dim);
-    rangeOps.add(z_dim);
+    rangeOps.add("limits", "Y[4.00e0:+6]");
+    rangeOps.add("limits", "Z[4:6]");
 
     RangeFilter filter;
     filter.setOptions(rangeOps);
@@ -155,6 +122,45 @@ TEST(RangeFilterTest, multipleDimensions)
     EXPECT_FLOAT_EQ(6.0, view->getFieldAs<double>(Dimension::Id::Z, 2));
 }
 
+TEST(RangeFilterTest, multipleDimsBusted)
+{
+    BOX3D srcBounds(1, 3, 5, 1, 3, 5);
+
+    Options ops;
+    ops.add("bounds", srcBounds);
+    ops.add("mode", "ramp");
+    ops.add("num_points", 1);
+
+    FauxReader reader;
+    reader.setOptions(ops);
+
+    Options rangeOps1;
+    rangeOps1.add("limits", "X[1:1], Y[27:27]");
+
+    RangeFilter f1;
+    f1.setOptions(rangeOps1);
+    f1.setInput(reader);
+
+    PointTable t1;
+    f1.prepare(t1);
+    PointViewSet s1 = f1.execute(t1);
+    PointViewPtr v1 = *s1.begin();
+
+    Options rangeOps2;
+    rangeOps2.add("limits", "Y[27:27], X[1:1]");
+
+    RangeFilter f2;
+    f2.setOptions(rangeOps2);
+    f2.setInput(reader);
+
+    PointTable t2;
+    f2.prepare(t2);
+    PointViewSet s2 = f2.execute(t2);
+    PointViewPtr v2 = *s2.begin();
+
+    EXPECT_EQ(v1->size(), v2->size());
+}
+
 TEST(RangeFilterTest, onlyMin)
 {
     BOX3D srcBounds(0.0, 0.0, 1.0, 0.0, 0.0, 10.0);
@@ -167,14 +173,8 @@ TEST(RangeFilterTest, onlyMin)
     FauxReader reader;
     reader.setOptions(ops);
 
-    Options range;
-    range.add("min", 6);
-
-    Option dim("dimension", "Z");
-    dim.setOptions(range);
-
     Options rangeOps;
-    rangeOps.add(dim);
+    rangeOps.add("limits", "Z[6:]");
 
     RangeFilter filter;
     filter.setOptions(rangeOps);
@@ -207,14 +207,8 @@ TEST(RangeFilterTest, onlyMax)
     FauxReader reader;
     reader.setOptions(ops);
 
-    Options range;
-    range.add("max", 5);
-
-    Option dim("dimension", "Z");
-    dim.setOptions(range);
-
     Options rangeOps;
-    rangeOps.add(dim);
+    rangeOps.add("limits", "Z[:5]");
 
     RangeFilter filter;
     filter.setOptions(rangeOps);
@@ -234,6 +228,40 @@ TEST(RangeFilterTest, onlyMax)
     EXPECT_FLOAT_EQ(5.0, view->getFieldAs<double>(Dimension::Id::Z, 4));
 }
 
+TEST(RangeFilterTest, negation)
+{
+    BOX3D srcBounds(0.0, 0.0, 1.0, 0.0, 0.0, 10.0);
+
+    Options ops;
+    ops.add("bounds", srcBounds);
+    ops.add("mode", "ramp");
+    ops.add("num_points", 10);
+
+    StageFactory f;
+    FauxReader reader;
+    reader.setOptions(ops);
+
+    Options rangeOps;
+    rangeOps.add("limits", "Z![2:5]");
+
+    RangeFilter filter;
+    filter.setOptions(rangeOps);
+    filter.setInput(reader);
+
+    PointTable table;
+    filter.prepare(table);
+    PointViewSet viewSet = filter.execute(table);
+    PointViewPtr view = *viewSet.begin();
+
+    EXPECT_EQ(1u, viewSet.size());
+    EXPECT_EQ(6u, view->size());
+    EXPECT_FLOAT_EQ(1.0, view->getFieldAs<double>(Dimension::Id::Z, 0));
+    EXPECT_FLOAT_EQ(6.0, view->getFieldAs<double>(Dimension::Id::Z, 1));
+    EXPECT_FLOAT_EQ(7.0, view->getFieldAs<double>(Dimension::Id::Z, 2));
+    EXPECT_FLOAT_EQ(8.0, view->getFieldAs<double>(Dimension::Id::Z, 3));
+    EXPECT_FLOAT_EQ(9.0, view->getFieldAs<double>(Dimension::Id::Z, 4));
+    EXPECT_FLOAT_EQ(10.0, view->getFieldAs<double>(Dimension::Id::Z, 5));
+}
 
 TEST(RangeFilterTest, equals)
 {
@@ -247,14 +275,8 @@ TEST(RangeFilterTest, equals)
     FauxReader reader;
     reader.setOptions(ops);
 
-    Options range;
-    range.add("equals", 5);
-
-    Option dim("dimension", "Z");
-    dim.setOptions(range);
-
     Options rangeOps;
-    rangeOps.add(dim);
+    rangeOps.add("limits", "Z[5:5]");
 
     RangeFilter filter;
     filter.setOptions(rangeOps);
@@ -282,15 +304,8 @@ TEST(RangeFilterTest, negativeValues)
     FauxReader reader;
     reader.setOptions(ops);
 
-    Options range;
-    range.add("min", -1);
-    range.add("max", 1);
-
-    Option dim("dimension", "Z");
-    dim.setOptions(range);
-
     Options rangeOps;
-    rangeOps.add(dim);
+    rangeOps.add("limits", "Z[-1:1)");
 
     RangeFilter filter;
     filter.setOptions(rangeOps);
@@ -302,9 +317,40 @@ TEST(RangeFilterTest, negativeValues)
     PointViewPtr view = *viewSet.begin();
 
     EXPECT_EQ(1u, viewSet.size());
-    EXPECT_EQ(3u, view->size());
+    EXPECT_EQ(2u, view->size());
     EXPECT_FLOAT_EQ(-1.0, view->getFieldAs<double>(Dimension::Id::Z, 0));
     EXPECT_FLOAT_EQ(0.0, view->getFieldAs<double>(Dimension::Id::Z, 1));
-    EXPECT_FLOAT_EQ(1.0, view->getFieldAs<double>(Dimension::Id::Z, 2));
+}
+
+TEST(RangeFilterTest, simple_logic)
+{
+
+    Options ops;
+    ops.add("bounds", BOX3D(1, 101, 201, 10, 110, 210));
+    ops.add("mode", "ramp");
+    ops.add("num_points", 10);
+
+    FauxReader reader;
+    reader.setOptions(ops);
+
+    Options rangeOps;
+    rangeOps.add("limits", "Y[108:109], X[2:5], Z[1:1000], X[7:9], Y[103:105]");
+
+    RangeFilter filter;
+    filter.setOptions(rangeOps);
+    filter.setInput(reader);
+
+    PointTable table;
+    filter.prepare(table);
+    PointViewSet viewSet = filter.execute(table);
+    PointViewPtr view = *viewSet.begin();
+
+    EXPECT_EQ(1u, viewSet.size());
+    EXPECT_EQ(5u, view->size());
+    EXPECT_EQ(view->getFieldAs<int>(Dimension::Id::X, 0), 3);
+    EXPECT_EQ(view->getFieldAs<int>(Dimension::Id::X, 1), 4);
+    EXPECT_EQ(view->getFieldAs<int>(Dimension::Id::X, 2), 5);
+    EXPECT_EQ(view->getFieldAs<int>(Dimension::Id::X, 3), 8);
+    EXPECT_EQ(view->getFieldAs<int>(Dimension::Id::X, 4), 9);
 }
 

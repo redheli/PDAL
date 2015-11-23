@@ -72,8 +72,7 @@ typedef std::shared_ptr<PointView> PointViewPtr;
 class PDAL_DLL Kernel
 {
 public:
-    virtual ~Kernel()
-    {}
+    virtual ~Kernel();
 
     // call this, to start the machine
     int run(int argc, const char* argv[], const std::string& appName);
@@ -128,7 +127,12 @@ public:
 
     void applyExtraStageOptionsRecursive(Stage *s)
     {
-        s->addOptions(extraStageOptions(s->getName()));
+        // if options provided via command-line, we assume they should overwrite
+        // existing options, remove first, and then add
+        Options ops = extraStageOptions(s->getName());
+
+        s->removeOptions(ops);
+        s->addOptions(ops);
         auto stages = s->getInputs();
         for (Stage *s : stages)
             applyExtraStageOptionsRecursive(s);
@@ -192,4 +196,3 @@ private:
 PDAL_DLL std::ostream& operator<<(std::ostream& ostr, const Kernel&);
 
 } // namespace pdal
-

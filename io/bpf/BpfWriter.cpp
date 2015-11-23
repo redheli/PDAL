@@ -131,10 +131,22 @@ void BpfWriter::processOptions(const Options& options)
         }
         m_bundledFiles.push_back(ulemFile);
     }
+
+    // BPF coordinates are always in UTM meters, which can be quite large.
+    // Allowing the writer to proceed with the default offset of 0 can lead to
+    // unexpected quantization of the coordinates. Instead, we force use of
+    // auto offset to subtract the minimum value in XYZ, unless of course, the
+    // user chooses to override with their own offset.
+    if (!options.hasOption("offset_x"))
+        m_xXform.m_autoOffset = true;
+    if (!options.hasOption("offset_y"))
+        m_yXform.m_autoOffset = true;
+    if (!options.hasOption("offset_z"))
+        m_zXform.m_autoOffset = true;
 }
 
 
-void BpfWriter::readyTable(PointTableRef table)
+void BpfWriter::prepared(PointTableRef table)
 {
     loadBpfDimensions(table.layout());
 }
@@ -166,9 +178,28 @@ void BpfWriter::readyFile(const std::string& filename)
 
 void BpfWriter::loadBpfDimensions(PointLayoutPtr layout)
 {
+    Dimension::IdList dims;
+
+    if (m_outputDims.size())
+    {
+       for (std::string& s : m_outputDims)
+       {
+           Dimension::Id::Enum id = layout->findDim(s);
+           if (id == Dimension::Id::Unknown)
+           {
+               std::ostringstream oss;
+               oss << "Invalid dimension '" << s << "' specified for "
+                   "'output_dims' option.";
+               throw pdal_error(oss.str());
+            }
+            dims.push_back(id);
+       }
+    }
+    else
+        dims = layout->dims();
+
     // Verify that we have X, Y and Z and that they're the first three
     // dimensions.
-    Dimension::IdList dims = layout->dims();
     std::sort(dims.begin(), dims.end());
     if (dims.size() < 3 || dims[0] != Dimension::Id::X ||
         dims[1] != Dimension::Id::Y || dims[2] != Dimension::Id::Z)
@@ -335,4 +366,3 @@ void BpfWriter::doneFile()
 }
 
 } //namespace pdal
-

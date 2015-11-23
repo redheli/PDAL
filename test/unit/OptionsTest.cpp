@@ -132,31 +132,8 @@ TEST(OptionsTest, test_options_copy_ctor)
 
     Options copy(opts);
 
-    opt_i.setOptions(copy);
-
     EXPECT_TRUE(copy.hasOption("my_int"));
     EXPECT_TRUE(copy.hasOption("my_string"));
-}
-
-TEST(OptionsTest, test_options_multi)
-{
-    Option opt_i("a", 1, "This is my integral option.");
-    const Option opt_s("b", "2", "This is my stringy option.");
-
-    Options opts;
-    opts.add(opt_i);
-    opts.add(opt_s);
-
-    Option opt;
-    opt.setOptions(opts);
-
-    boost::optional<Options const&> o = opt.getOptions();
-
-    Option const& i = o->getOption("a");
-    EXPECT_EQ(i.getValue<int>(), 1);
-
-    Option const& s = o->getOption("b");
-    EXPECT_EQ(s.getValue<std::string>(), "2");
 }
 
 TEST(OptionsTest, test_options_writing)
@@ -305,20 +282,13 @@ TEST(OptionsTest, implicitdefault)
 TEST(OptionsTest, metadata)
 {
     Options ops;
-    ops.add("test1", "This is a test");
-    ops.add("test2", 56);
-    ops.add("test3", 27.5, "Testing test3");
+    ops.add("testa", "This is a test");
+    ops.add("testb", 56);
+    ops.add("testc", 27.5, "Testing testc");
 
-    Option op35("test3.5", 3.5);
+    Option op35("testd", 3.5);
 
-    Options subops;
-    subops.add("subtest1", "Subtest1");
-    subops.add("subtest2", "Subtest2");
-
-    op35.setOptions(subops);
-
-    ops.add(op35);
-    ops.add("test4", "Testing option test 4");
+    ops.add("teste", "Testing option test e");
 
     MetadataNode node = ops.toMetadata();
 
@@ -361,3 +331,11 @@ TEST(OptionsTest, conditional)
     EXPECT_EQ(ops.getValueOrDefault("bazel", std::string()), "win");
 }
 
+TEST(OptionsTest, valid)
+{
+    EXPECT_TRUE(Option::nameValid("foo_123_bar_baz", false));
+    EXPECT_FALSE(Option::nameValid("foo_123_bar-baz", false));
+    EXPECT_FALSE(Option::nameValid("Afoo_123_bar_baz", false));
+    EXPECT_FALSE(Option::nameValid("1foo_123_bar_baz", false));
+    EXPECT_FALSE(Option::nameValid("1foo_123_bar_baz", false));
+}

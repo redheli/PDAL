@@ -1,43 +1,25 @@
 {
   "options":
   {
-    "test1":
+    "testa":
     {
       "description": "",
       "value": "This is a test"
     },
-    "test2":
+    "testb":
     {
       "description": "",
       "value": "56"
     },
-    "test3":
+    "testc":
     {
-      "description": "Testing test3",
+      "description": "Testing testc",
       "value": "27.5"
     },
-    "test3.5":
+    "teste":
     {
       "description": "",
-      "options":
-      {
-        "subtest1":
-        {
-          "description": "",
-          "value": "Subtest1"
-        },
-        "subtest2":
-        {
-          "description": "",
-          "value": "Subtest2"
-        }
-      },
-      "value": "3.5"
-    },
-    "test4":
-    {
-      "description": "",
-      "value": "Testing option test 4"
+      "value": "Testing option test e"
     }
   }
 }

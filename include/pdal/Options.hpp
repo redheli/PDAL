@@ -55,7 +55,6 @@ class Option;
 namespace options
 {
 typedef std::multimap<std::string, Option> map_t;
-typedef std::shared_ptr<Options> OptionsPtr;
 }
 
 /*!
@@ -101,8 +100,7 @@ public:
 
 /// @name Constructors
 
-    /// Empty constructor
-    Option() : m_options(0)
+    Option()
     {}
 
     /// Primary constructor
@@ -123,42 +121,47 @@ public:
     /// Construct from an existing boost::property_tree
     Option(const boost::property_tree::ptree& tree);
 
-/// @name Equality
-    /// Equality
-    bool equals(const Option& rhs) const
-    {
-        return (m_name == rhs.getName() &&
-            m_value == rhs.getValue<std::string>() &&
-            m_description == rhs.getDescription() &&
-            m_options == rhs.m_options);
-    }
-
     /// Equality operator
     bool operator==(const Option& rhs) const
     {
-        return equals(rhs);
+        return (m_name == rhs.getName() &&
+            m_value == rhs.getValue<std::string>() &&
+            m_description == rhs.getDescription());
     }
 
     /// Inequality operator
     bool operator!=(const Option& rhs) const
     {
-        return (!equals(rhs));
+        return (! operator == (rhs));
     }
 
 /// @name Attribute access
 
-    /// Overwrites the name given in the constructor
-    /// @param name new value to use for the name of the Option
-    inline void setName(const std::string& name)
-    {
-        m_name = name;
-    }
-
     /// @return the name for the Option instance
-    inline std::string const& getName() const
+    std::string const& getName() const
     {
         return m_name;
     }
+
+    static std::string::size_type
+    parse(const std::string& name, std::string::size_type p)
+    {
+        std::string::size_type count = 0;
+
+        if (std::islower(name[p++]))
+        {
+            count++;
+
+            auto isname = [](char c)
+                { return (std::islower(c) || std::isdigit(c) || c == '_'); };
+            count += Utils::extract(name, p, isname);
+        }
+        return count;
+    }
+
+    // Make sure that the option name consists of lowercase characters or
+    // underscores.
+    static bool nameValid(const std::string& name, bool reportError);
 
     /// Overwrites the description given in the constructor
     /// @param description new value to use for the description of the Option
@@ -201,12 +204,6 @@ public:
     \endverbatim
     */
 
-    boost::optional<Options const&> getOptions() const;
-
-    /// sets the Options set for this Option instance
-    /// @param op Options set to use
-    void setOptions(Options const& op);
-
     bool empty() const;
 
 #if defined(PDAL_COMPILER_MSVC)
@@ -231,7 +228,6 @@ private:
     std::string m_name;
     std::string m_value;
     std::string m_description; // optional field
-    options::OptionsPtr m_options; // Sub-options.
 
     template <typename T>
     void getValue(T& t) const
@@ -282,27 +278,6 @@ template<> void Option::setValue(const bool& value);
 template<> void Option::setValue(const std::string& value);
 #endif
 
-/*!
-    \verbatim embed:rst
-     An Options object is just a map of names to Option objects.
-
-     Dumped as XML, an Options object with two Option objects looks like this:
-
-     ::
-
-        <?xml...>
-        <Option>
-          <Name>myname</name>
-          <Value>17</value>
-          <Description>my descr</description>
-        </Option>
-        <Option>
-          <Name>myname2</name>
-          <Value>13</value>
-          <Description>my descr2</description>
-        </Option>
-    \endverbatim
-*/
 class PDAL_DLL Options
 {
 public:
@@ -363,7 +338,7 @@ public:
     void add(const Option& option);
 
     // if option name not present, just returns
-    void remove(const std::string& name);
+    void remove(const Option& option);
 
     MetadataNode toMetadata() const
     {
@@ -434,7 +409,7 @@ public:
 
     // get value of an option, or use given default if option not present
     template<typename T>
-    T getValueOrDefault(std::string const& name, T defaultValue) const
+    T getValueOrDefault(std::string const& name, const T& defaultValue) const
     {
         T result;
 
@@ -481,84 +456,15 @@ public:
     // returns true iff the option name is valid
     bool hasOption(std::string const& name) const;
 
-    // the empty options list
-    // BUG: this should be a member variable, not a function, but doing so
-    // causes vs2010 to fail to link
-    static const Options& none();
-
     void dump() const;
 
     std::vector<Option> getOptions(std::string const& name="") const;
 
 
-    template<typename T>
-    boost::optional<T> getMetadataOption(std::string const& name) const
-    {
-        // <Reader type="writers.las">
-        //     <Option name="metadata">
-        //         <Options>
-        //             <Option name="dataformatid">
-        //             3
-        //             </Option>
-        //             <Option name="filesourceid">
-        //             forward
-        //             </Option>
-        //             <Option name="year">
-        //             forward
-        //             </Option>
-        //             <Option name="day_of_year">
-        //             forward
-        //             </Option>
-        //             <Option name="vlr">
-        //             forward
-        //             <Options>
-        //                 <Option name="user_id">
-        //                 hobu
-        //                 </Option>
-        //                 <Option name="record">
-        //                 1234
-        //                 </Option>
-        //             </Options>
-        //             </Option>
-        //         </Options>
-        //     </Option>
-        // </Reader>
-
-        Option const* doMetadata(0);
-        try
-        {
-            doMetadata = &getOption("metadata");
-        }
-        catch (Option::not_found)
-        {
-            return boost::optional<T>();
-        }
-
-        boost::optional<Options const&> meta = doMetadata->getOptions();
-        if (meta)
-        {
-            try
-            {
-                meta->getOption(name);
-            }
-            catch (Option::not_found)
-            {
-                return boost::optional<T>();
-            }
-
-            return boost::optional<T>(meta->getOption(name).getValue<T>());
-        }
-        return boost::optional<T>();
-    }
-
 private:
     options::map_t m_options;
 };
 
-
-
 PDAL_DLL std::ostream& operator<<(std::ostream& ostr, const Options&);
 
-
 } // namespace pdal
-

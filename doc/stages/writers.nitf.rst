@@ -16,8 +16,8 @@ Example
   <Pipeline version="1.0">
     <Writer type="writers.nitf">
       <Option name="filename">mynitf.nitf</Option>
-      <Option name="ONAME">James Alexander</Option>
-      <Option name="OPHONE">646-322-3123</Option>
+      <Option name="oname">James Alexander</Option>
+      <Option name="ophone">646-322-3123</Option>
       <Reader type="readers.las">
         <Option name="filename">inputfile.las</Option>
       </Reader>
@@ -35,51 +35,52 @@ filename
   the placeholder will be replaced with an incrementing integer.  If no
   placeholder is found, all PointViews provided to the writer are
   aggregated into a single file for output.  Multiple PointViews are usually
-  the result of using :ref:`filters.splitter` or :ref:`filters.chipper`.
+  the result of using :ref:`filters.splitter`, :ref:`filters.chipper` or
+  :ref:`filters.divider`.
 
-CLEVEL
+clevel
   File complexity level (2 characters) [Default: **03**]
   
-STYPE
+stype
   Standard type (4 characters) [Default: **BF01**]
 
-OSTAID
+ostaid
   Originating station ID (10 characters) [Default: **PDAL**]
 
-FTITLE
+ftitle
   File title (80 characters) [Default: <spaces>]
 
-FSCLAS
+fsclas
   File security classification ('T', 'S', 'C', 'R' or 'U') [Default: **U**]
 
-ONAME
+oname
   Originator name (24 characters) [Default: <spaces>]
 
-OPHONE
+ophone
   Originator phone (18 characters) [Default: <spaces>]
 
-FSCTLH
+fsctlh
   File control and handling (2 characters) [Default: <spaces>]
 
-FSCLSY
+fsclsy
   File classification system (2 characters) [Default: <spaces>]
 
-IDATIM
+idatim
   Image date and time (format: 'CCYYMMDDhhmmss') [Default: <spaces>]
 
-IID2
+iid2
   Image identifier 2 (80 characters) [Default: <spaces>]
 
-FSCLTX
+fscltx
   File classification text (43 characters) [Default: <spaces>]
 
-AIMIDB
-  Option tag that should contain further options to complete the AIMIDB
-  (Additional Image ID) TRE record [Default: None]
+aimidb
+  Comma separated list of name/value pairs to complete the AIMIDB
+  (Additional Image ID) TRE record (format name:value) [Default: None]
 
-ACFTB
-  Option tag that should contain further options to complete the ACFTB
-  (Aircraft Information) TRE record [Default: None]
+acftb
+  Comma separated list of name/value pairs to complete the ACFTB
+  (Aircraft Information) TRE record (format name:value) [Default: None]
 
 
 .. _NITF: http://en.wikipedia.org/wiki/National_Imagery_Transmission_Format

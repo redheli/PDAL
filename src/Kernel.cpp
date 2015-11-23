@@ -35,11 +35,14 @@
 #include <pdal/GlobalEnvironment.hpp>
 #include <pdal/Kernel.hpp>
 #include <pdal/PDALUtils.hpp>
+
+#include <cctype>
 #include <iostream>
 
 #include <boost/algorithm/string.hpp>
 
 #include <pdal/pdal_config.hpp>
+#include <pdal/Options.hpp>
 #include <pdal/StageFactory.hpp>
 
 #include <pdal/pdal_config.hpp>
@@ -70,6 +73,18 @@ Kernel::Kernel()
     , m_visualize(false)
 {}
 
+
+Kernel::~Kernel()
+{
+    for (auto & iter : m_public_options)
+    {
+        delete iter;
+    }
+    for (auto & iter : m_hidden_options)
+    {
+        delete iter;
+    }
+}
 
 std::ostream& operator<<(std::ostream& ostr, const Kernel& kernel)
 {
@@ -219,61 +234,72 @@ int Kernel::run(int argc, const char* argv[], const std::string& appName)
 }
 
 
+namespace
+{
+
+bool parseOption(std::string o, std::string& stage, std::string& option,
+    std::string& value)
+{
+    if (o.size() < 2)
+        return false;
+    if (o[0] != '-' || o[1] != '-')
+        return false;
+
+    o = o.substr(2);
+
+    // Options are stage_type.stage_name.option_name
+    // stage_type and stage_name are always lowercase.  Option name starts
+    // with lowercase and then contains lowercase, numbers or underscore.
+
+    // This awfulness is to work around the multiply-defined islower.  Seems
+    // a bit better than the cast solution.
+    auto islc = [](char c)
+        { return std::islower(c); };
+
+    std::string::size_type pos = 0;
+    std::string::size_type count = 0;
+    // Get stage_type.
+    count = Utils::extract(o, pos, islc);
+    pos += count;
+    if (o[pos++] != '.')
+        return false;
+
+    // Get stage_name.
+    count = Utils::extract(o, pos, islc);
+    pos += count;
+    stage = o.substr(0, pos);
+    if (o[pos++] != '.')
+        return false;
+
+    // Get option name.
+    std::string::size_type optionStart = pos;
+    count = Option::parse(o, pos);
+    pos += count;
+    option = o.substr(optionStart, count);
+
+    if (o[pos++] != '=')
+        return false;
+
+    // The command-line parser takes care of quotes around an argument
+    // value and such.  May want to do something to handle escaped characters?
+    value = o.substr(pos);
+    return true;
+}
+
+} // unnamed namespace
+
+
 void Kernel::collectExtraOptions()
 {
     for (const auto& o : m_extra_options)
     {
-        typedef boost::tokenizer<boost::char_separator<char>> tokenizer;
+        std::string stageName, opName, value;
 
-        // if we don't have --, we're not an option we
-        // even care about
-        if (!boost::algorithm::find_first(o, "--"))
-            continue;
-
-        // Find the dimensions listed and put them on the id list.
-        boost::char_separator<char> equal("=");
-        boost::char_separator<char> dot(".");
-        tokenizer option_tokens(o, equal);
-        std::vector<std::string> option_split;
-        for (auto const& ti : option_tokens)
-            option_split.push_back(boost::lexical_cast<std::string>(ti));
-        if (!(option_split.size() == 2))
+        if (parseOption(o, stageName, opName, value))
         {
-//             std::ostringstream oss;
-//             oss << "option '" << o << "' did not split correctly. Is it "
-//                 "in the form --readers.las.option=foo?";
-//             throw app_usage_error(oss.str());
-            continue;
+            Option op(opName, value);
+            m_extraStageOptions[stageName].add(op);
         }
-
-        std::string option_value(option_split[1]);
-        std::string stage_value(option_split[0]);
-        boost::algorithm::erase_all(stage_value, "--");
-
-        tokenizer name_tokens(stage_value, dot);
-        std::vector<std::string> stage_values;
-        for (auto const& ti : name_tokens)
-            stage_values.push_back(ti);
-
-        std::string option_name = *stage_values.rbegin();
-        std::ostringstream stage_name_ostr;
-        bool bFirst(true);
-        for (auto s = stage_values.begin(); s != stage_values.end() - 1; ++s)
-        {
-            auto s2 = boost::algorithm::erase_all_copy(*s, " ");
-
-            if (bFirst)
-            {
-                bFirst = false;
-            }
-            else
-                stage_name_ostr <<".";
-            stage_name_ostr << s2;
-        }
-        std::string stageName(stage_name_ostr.str());
-
-        Option op(option_name, option_value);
-        m_extraStageOptions[stageName].add(op);
     }
 }
 

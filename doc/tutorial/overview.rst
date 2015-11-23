@@ -1,4 +1,4 @@
-.. _overview
+.. _overview:
 
 ******************************************************************************
 PDAL Architecture Overview
@@ -14,6 +14,9 @@ for transformation of data between various geometric projections and
 manipulations and can calculate some statistical, boundary and density data.
 PDAL provides an API that can be used by programmers for integration into their
 own projects or to allow extension of existing capabilities.
+
+
+.. _the-pdal-model::
 
 The PDAL model
 --------------------------------------------------------------------------------
@@ -339,6 +342,8 @@ point_count_t read(PointViewPtr view, point_count_t count)
     input so that subsequent calls to read() will result in all points being
     read.
 
+
+.. _implementing-a-filter::
 
 Implementing a Filter
 ................................................................................

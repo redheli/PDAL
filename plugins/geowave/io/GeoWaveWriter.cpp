@@ -59,11 +59,9 @@ using jace::StaticVmLoader;
 #ifdef _WIN32
 #include "jace/Win32VmLoader.h"
 using jace::Win32VmLoader;
-const std::string os_pathsep(";");
 #else
 #include "jace/UnixVmLoader.h"
 using ::jace::UnixVmLoader;
-const std::string os_pathsep(":");
 #endif
 
 #include "jace/proxy/types/JDouble.h"
@@ -117,24 +115,24 @@ using jace::proxy::org::opengis::feature::simple::SimpleFeatureType;
 #include "jace/proxy/org/opengis/feature/type/AttributeDescriptor.h"
 using jace::proxy::org::opengis::feature::type::AttributeDescriptor;
 
-#include "jace/proxy/mil/nga/giat/geowave/index/ByteArrayId.h"
-using jace::proxy::mil::nga::giat::geowave::index::ByteArrayId;
-#include "jace/proxy/mil/nga/giat/geowave/vector/adapter/FeatureDataAdapter.h"
-using jace::proxy::mil::nga::giat::geowave::vector::adapter::FeatureDataAdapter;
-#include "jace/proxy/mil/nga/giat/geowave/vector/adapter/FeatureCollectionDataAdapter.h"
-using jace::proxy::mil::nga::giat::geowave::vector::adapter::FeatureCollectionDataAdapter;
-#include "jace/proxy/mil/nga/giat/geowave/store/adapter/WritableDataAdapter.h"
-using jace::proxy::mil::nga::giat::geowave::store::adapter::WritableDataAdapter;
-#include "jace/proxy/mil/nga/giat/geowave/store/index/Index.h"
-using jace::proxy::mil::nga::giat::geowave::store::index::Index;
-#include "jace/proxy/mil/nga/giat/geowave/store/index/IndexType_JaceIndexType.h"
-using jace::proxy::mil::nga::giat::geowave::store::index::IndexType_JaceIndexType;
-#include "jace/proxy/mil/nga/giat/geowave/accumulo/BasicAccumuloOperations.h"
-using jace::proxy::mil::nga::giat::geowave::accumulo::BasicAccumuloOperations;
-#include "jace/proxy/mil/nga/giat/geowave/accumulo/AccumuloDataStore.h"
-using jace::proxy::mil::nga::giat::geowave::accumulo::AccumuloDataStore;
-#include "jace/proxy/mil/nga/giat/geowave/accumulo/AccumuloIndexWriter.h"
-using jace::proxy::mil::nga::giat::geowave::accumulo::AccumuloIndexWriter;
+#include "jace/proxy/mil/nga/giat/geowave/core/index/ByteArrayId.h"
+using jace::proxy::mil::nga::giat::geowave::core::index::ByteArrayId;
+#include "jace/proxy/mil/nga/giat/geowave/adapter/vector/FeatureDataAdapter.h"
+using jace::proxy::mil::nga::giat::geowave::adapter::vector::FeatureDataAdapter;
+#include "jace/proxy/mil/nga/giat/geowave/adapter/vector/FeatureCollectionDataAdapter.h"
+using jace::proxy::mil::nga::giat::geowave::adapter::vector::FeatureCollectionDataAdapter;
+#include "jace/proxy/mil/nga/giat/geowave/core/store/adapter/WritableDataAdapter.h"
+using jace::proxy::mil::nga::giat::geowave::core::store::adapter::WritableDataAdapter;
+#include "jace/proxy/mil/nga/giat/geowave/core/store/index/Index.h"
+using jace::proxy::mil::nga::giat::geowave::core::store::index::Index;
+#include "jace/proxy/mil/nga/giat/geowave/core/geotime/IndexType_JaceIndexType.h"
+using jace::proxy::mil::nga::giat::geowave::core::geotime::IndexType_JaceIndexType;
+#include "jace/proxy/mil/nga/giat/geowave/datastore/accumulo/BasicAccumuloOperations.h"
+using jace::proxy::mil::nga::giat::geowave::datastore::accumulo::BasicAccumuloOperations;
+#include "jace/proxy/mil/nga/giat/geowave/datastore/accumulo/AccumuloDataStore.h"
+using jace::proxy::mil::nga::giat::geowave::datastore::accumulo::AccumuloDataStore;
+#include "jace/proxy/mil/nga/giat/geowave/datastore/accumulo/AccumuloIndexWriter.h"
+using jace::proxy::mil::nga::giat::geowave::datastore::accumulo::AccumuloIndexWriter;
 
 static PluginInfo const s_info = PluginInfo(
     "writers.geowave",
@@ -156,14 +154,14 @@ namespace pdal
     {
         Options options;
 
-        Option zookeeperUrl("zookeeperUrl", "", "The comma-delimited URLs for all zookeeper servers, this will be directly used to instantiate a ZookeeperInstance.");
-        Option instanceName("instanceName", "", "The zookeeper instance name, this will be directly used to instantiate a ZookeeperInstance.");
+        Option zookeeperUrl("zookeeper_url", "", "The comma-delimited URLs for all zookeeper servers, this will be directly used to instantiate a ZookeeperInstance.");
+        Option instanceName("instance_name", "", "The zookeeper instance name, this will be directly used to instantiate a ZookeeperInstance.");
         Option username("username", "", "The username for the account to establish an Accumulo connector.");
         Option password("password", "", "The password for the account to establish an Accumulo connector.");
-        Option tableNamespace("tableNamespace", "", "The table name to be used when interacting with GeoWave.");
-        Option featureTypeName("featureTypeName", "PDAL_Point", "The feature type name to be used when interacting with GeoWave.");
-        Option dataAdapter("dataAdapter", "FeatureDataAdapter", "FeatureCollectionDataAdapter stores multiple points per Accumulo entry.  FeatureDataAdapter stores a single point per Accumulo entry.");
-        Option pointsPerEntry("pointsPerEntry", 5000u, "Sets the maximum number of points per Accumulo entry when using FeatureCollectionDataAdapter.");
+        Option tableNamespace("table_namespace", "", "The table name to be used when interacting with GeoWave.");
+        Option featureTypeName("feature_type_name", "PDAL_Point", "The feature type name to be used when interacting with GeoWave.");
+        Option dataAdapter("data_adapter", "FeatureDataAdapter", "FeatureCollectionDataAdapter stores multiple points per Accumulo entry.  FeatureDataAdapter stores a single point per Accumulo entry.");
+        Option pointsPerEntry("points_per_entry", 5000u, "Sets the maximum number of points per Accumulo entry when using FeatureCollectionDataAdapter.");
 
         options.add(zookeeperUrl);
         options.add(instanceName);
@@ -179,14 +177,14 @@ namespace pdal
 
     void GeoWaveWriter::processOptions(const Options& ops)
     {
-        m_zookeeperUrl = ops.getValueOrThrow<std::string>("zookeeperUrl");
-        m_instanceName = ops.getValueOrThrow<std::string>("instanceName");
+        m_zookeeperUrl = ops.getValueOrThrow<std::string>("zookeeper_url");
+        m_instanceName = ops.getValueOrThrow<std::string>("instance_name");
         m_username = ops.getValueOrThrow<std::string>("username");
         m_password = ops.getValueOrThrow<std::string>("password");
-        m_tableNamespace = ops.getValueOrThrow<std::string>("tableNamespace");
-        m_featureTypeName = ops.getValueOrDefault<std::string>("featureTypeName", "PDAL_Point");
-        m_useFeatCollDataAdapter = !(ops.getValueOrDefault<std::string>("dataAdapter", "FeatureCollectionDataAdapter").compare("FeatureDataAdapter") == 0);
-        m_pointsPerEntry = ops.getValueOrDefault<uint32_t>("pointsPerEntry", 5000u);
+        m_tableNamespace = ops.getValueOrThrow<std::string>("table_namespace");
+        m_featureTypeName = ops.getValueOrDefault<std::string>("feature_type_name", "PDAL_Point");
+        m_useFeatCollDataAdapter = !(ops.getValueOrDefault<std::string>("data_adapter", "FeatureCollectionDataAdapter").compare("FeatureDataAdapter") == 0);
+        m_pointsPerEntry = ops.getValueOrDefault<uint32_t>("points_per_entry", 5000u);
     }
 
     void GeoWaveWriter::initialize()
@@ -315,7 +313,6 @@ namespace pdal
         {
             StaticVmLoader loader(JNI_VERSION_1_2);
 
-            std::string jaceClasspath = TOSTRING(JACE_RUNTIME_JAR);
             std::string geowaveClasspath = TOSTRING(GEOWAVE_RUNTIME_JAR);
 
             OptionList options;
@@ -324,7 +321,7 @@ namespace pdal
             //options.push_back(CustomOption("-Xcheck:jni"));
             //options.push_back(Verbose (Verbose::JNI));
             //options.push_back(Verbose (Verbose::CLASS));
-            options.push_back(ClassPath(jaceClasspath + os_pathsep + geowaveClasspath));
+            options.push_back(ClassPath(geowaveClasspath));
 
             jace::createVm(loader, options);
         }

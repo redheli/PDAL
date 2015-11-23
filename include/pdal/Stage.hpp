@@ -53,9 +53,6 @@ namespace pdal
 {
 
 class Iterator;
-class StageSequentialIterator;
-class StageRandomIterator;
-class StageBlockIterator;
 class StageRunner;
 class StageWrapper;
 
@@ -95,6 +92,11 @@ public:
         for (const auto& o : opts.getOptions())
             m_options.add(o);
     }
+    void removeOptions(const Options& opts)
+    {
+        for (const auto& o : opts.getOptions())
+            m_options.remove(o);
+    }
     virtual boost::property_tree::ptree serializePipeline() const = 0;
     virtual LogPtr log() const
         { return m_log; }
@@ -116,15 +118,9 @@ public:
         { return Options(); }
     static Dimension::IdList getDefaultDimensions()
         { return Dimension::IdList(); }
-    static std::string s_getInfoLink()
-        { return std::string(); }
     static std::string s_getPluginVersion()
         { return std::string(); }
-    virtual boost::property_tree::ptree toPTree(PointTableRef table) const
-        { return boost::property_tree::ptree(); }
 
-    virtual StageSequentialIterator* createSequentialIterator() const
-        { return NULL; }
     inline MetadataNode getMetadata() const
         { return m_metadata; }
 
@@ -161,6 +157,8 @@ private:
     void l_done(PointTableRef table);
     virtual QuickInfo inspect()
         { return QuickInfo(); }
+    virtual void initialize(PointTableRef /*table*/)
+        { initialize(); }
     virtual void initialize()
         {}
     virtual void addDimensions(PointLayoutPtr /*layout*/)
@@ -181,4 +179,3 @@ private:
 PDAL_DLL std::ostream& operator<<(std::ostream& ostr, const Stage&);
 
 } // namespace pdal
-

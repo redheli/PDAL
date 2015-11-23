@@ -41,6 +41,7 @@
 #include <LasHeader.hpp>
 #include <LasReader.hpp>
 #include <LasWriter.hpp>
+#include <BpfReader.hpp>
 
 #include <pdal/PointView.hpp>
 #include <pdal/StageFactory.hpp>
@@ -207,12 +208,13 @@ TEST(LasWriterTest, extra_dims)
     Options reader2Ops;
     reader2Ops.add("filename", Support::temppath("simple.las"));
     reader2Ops.add("extra_dims", "R1 =int32, B1= int16 ,G1=int32_t");
-    std::shared_ptr<LasReader> reader2(new LasReader);
-    reader2->setOptions(reader2Ops);
+
+    LasReader reader2;
+    reader2.setOptions(reader2Ops);
 
     PointTable readTable;
-    reader2->prepare(readTable);
-    viewSet = reader2->execute(readTable);
+    reader2.prepare(readTable);
+    viewSet = reader2.execute(readTable);
     pb = *viewSet.begin();
     Dimension::Id::Enum r1 = readTable.layout()->findDim("R1");
     EXPECT_TRUE(r1 != Dimension::Id::Unknown);
@@ -228,6 +230,60 @@ TEST(LasWriterTest, extra_dims)
         EXPECT_EQ(pb->getFieldAs<int16_t>(g1, i), colors[j][1]);
         EXPECT_EQ(pb->getFieldAs<int16_t>(b1, i), colors[j][2]);
         j++;
+    }
+}
+
+TEST(LasWriterTest, all_extra_dims)
+{
+    Options readerOps;
+
+    readerOps.add("filename", Support::datapath("bpf/simple-extra.bpf"));
+    BpfReader reader;
+    reader.setOptions(readerOps);
+
+    FileUtils::deleteFile(Support::temppath("simple.las"));
+
+    Options writerOps;
+    writerOps.add("extra_dims", "all");
+    writerOps.add("filename", Support::temppath("simple.las"));
+    writerOps.add("minor_version", 4);
+    LasWriter writer;
+    writer.setInput(reader);
+    writer.setOptions(writerOps);
+
+    PointTable table;
+    writer.prepare(table);
+    writer.execute(table);
+
+    Options ops;
+    ops.add("filename", Support::temppath("simple.las"));
+
+    LasReader r;
+    r.setOptions(ops);
+
+    PointTable t2;
+    r.prepare(t2);
+    Dimension::Id::Enum foo = t2.layout()->findDim("Foo");
+    Dimension::Id::Enum bar = t2.layout()->findDim("Bar");
+    Dimension::Id::Enum baz = t2.layout()->findDim("Baz");
+
+    PointViewSet s = r.execute(t2);
+    EXPECT_EQ(s.size(), 1u);
+    PointViewPtr v = *s.begin();
+
+    // We test for floats instead of doubles because when X, Y and Z
+    // get written, they are written scaled, which loses precision.  The
+    // foo, bar and baz values are written as full-precision doubles.
+    for (PointId i = 0; i < v->size(); ++i)
+    {
+        using namespace Dimension;
+
+        EXPECT_FLOAT_EQ(v->getFieldAs<float>(Id::X, i),
+            v->getFieldAs<float>(foo, i));
+        EXPECT_FLOAT_EQ(v->getFieldAs<float>(Id::Y, i),
+            v->getFieldAs<float>(bar, i));
+        EXPECT_FLOAT_EQ(v->getFieldAs<float>(Id::Z, i),
+            v->getFieldAs<float>(baz, i));
     }
 }
 
@@ -461,6 +517,76 @@ TEST(LasWriterTest, flex2)
     EXPECT_EQ(r.preview().m_pointCount, 1065u);
 }
 
+#if defined(PDAL_HAVE_LAZPERF) && defined(PDAL_HAVE_LASZIP)
+// LAZ files are normally written in chunks of 50,000, so a file of size
+// 110,000 ensures we read some whole chunks and a partial.
+TEST(LasWriterTest, lazperf)
+{
+    Options readerOps;
+    readerOps.add("filename", Support::datapath("las/autzen_trim.las"));
+
+    LasReader lazReader;
+    lazReader.setOptions(readerOps);
+
+    std::string testfile(Support::temppath("temp.laz"));
+
+    FileUtils::deleteFile(testfile);
+
+    Options writerOps;
+    writerOps.add("filename", testfile);
+    writerOps.add("compression", "lazperf");
+
+    LasWriter lazWriter;
+    lazWriter.setOptions(writerOps);
+    lazWriter.setInput(lazReader);
+
+    PointTable t;
+    lazWriter.prepare(t);
+    lazWriter.execute(t);
+
+    // Now test the points were properly written.  Use laszip.
+    Options ops1;
+    ops1.add("filename", testfile);
+
+    LasReader r1;
+    r1.setOptions(ops1);
+
+    PointTable t1;
+    r1.prepare(t1);
+    PointViewSet set1 = r1.execute(t1); 
+    PointViewPtr view1 = *set1.begin();
+
+    Options ops2;
+    ops2.add("filename", Support::datapath("las/autzen_trim.las"));
+
+    LasReader r2;
+    r2.setOptions(ops2);
+
+    PointTable t2;
+    r2.prepare(t2);
+    PointViewSet set2 = r2.execute(t2); 
+    PointViewPtr view2 = *set2.begin();
+
+    EXPECT_EQ(view1->size(), view2->size());
+    EXPECT_EQ(view1->size(), (point_count_t)110000);
+
+    DimTypeList dims = view1->dimTypes();
+    size_t pointSize = view1->pointSize();
+    EXPECT_EQ(view1->pointSize(), view2->pointSize());
+
+   // Validate some point data.
+    std::unique_ptr<char> buf1(new char[pointSize]);
+    std::unique_ptr<char> buf2(new char[pointSize]);
+    for (PointId i = 0; i < view1->pointSize(); i += 100)
+    {
+       view1->getPackedPoint(dims, i, buf1.get());
+       view2->getPackedPoint(dims, i, buf2.get());
+       EXPECT_EQ(memcmp(buf1.get(), buf2.get(), pointSize), 0);
+    }
+}
+#endif
+
+
 /**
 namespace
 {
@@ -517,57 +643,6 @@ TEST(LasWriterTest, simple)
     writer.execute(table);
 
     diffdump(infile, outfile);
-}
-**/
-
-//ABELL
-/**
-TEST(LasWriterTest, LasWriterTest_test_simple_laz)
-{
-    PointTable table;
-
-    WriterOpts writerOpts;
-    writerOpts.add("compressed", true);
-    writerOpts.add("creation_year", 0);
-    writerOpts.add("creation_doy", 0);
-    writerOpts.add("system_id", "");
-    writerOpts.add("software_id", "TerraScan");
-
-
-    // remove file from earlier run, if needed
-    FileUtils::deleteFile("laszip/LasWriterTest_test_simple_laz.laz");
-
-    LasReader reader(Support::datapath("laszip/basefile.las"));
-
-    std::ostream* ofs = FileUtils::createFile(
-        Support::temppath("LasWriterTest_test_simple_laz.laz"));
-
-    // need to scope the writer, so that's it dtor can use the stream
-    std::shared_ptr<LasWriter> writer(new LasWriter)(ofs);
-    writer->setOptions(writer);
-    writer->setInput(&reader);
-
-    writer->prepare(table);
-    writer->execute(table);
-
-    FileUtils::closeFile(ofs);
-
-    {
-        LasReader reader(
-            Support::temppath("LasWriterTest_test_simple_laz.laz"));
-    }
-
-    // these two files only differ by the description string in the VLR.
-    // This now skips the entire LASzip VLR for comparison.
-    const uint32_t numdiffs =Support::diff_files(
-        Support::temppath("LasWriterTest_test_simple_laz.laz"),
-        Support::datapath("laszip/laszip-generated.laz"),
-        227, 106);
-    EXPECT_EQ(numdiffs, 0u);
-
-    if (numdiffs == 0)
-        FileUtils::deleteFile(
-            Support::temppath("LasWriterTest_test_simple_laz.laz"));
 }
 **/
 

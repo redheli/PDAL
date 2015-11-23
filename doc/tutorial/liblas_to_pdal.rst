@@ -3,6 +3,10 @@
 libLAS C API to PDAL transition guide
 =====================================
 
+:Author: Vaclav Petras
+:Contact: wenzeslaus@gmail.com
+:Date: 09/04/2015
+
 This page shows how to port code using libLAS C API to PDAL API
 (which is C++). The new code is not using full power of PDAL but
 it uses just what is necessary to read content of a LAS file.
@@ -68,9 +72,9 @@ pointer was used with libLAS:
 
 .. code-block:: cpp
 
-if (LAS_header == NULL) {
-    /* fail */
-}
+    if (LAS_header == NULL) {
+        /* fail */
+    }
 
 In general, PDAL will throw a ``pdal_error`` exception in case something
 is wrong and it can't recover such in the case when the file can't be opened.
@@ -79,11 +83,11 @@ in ``try-catch`` block:
 
 .. code-block:: cpp
 
-try {
-    /* actual code */
-} catch {
-    /* fail in your own way */
-}
+    try {
+        /* actual code */
+    } catch {
+        /* fail in your own way */
+    }
 
 
 Dataset properties

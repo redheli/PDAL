@@ -34,67 +34,194 @@
 
 #include "RangeFilter.hpp"
 
-#include <cmath>
+#include <pdal/util/Utils.hpp>
+
+#include <cctype>
 #include <limits>
 #include <map>
 #include <string>
-#include <utility>
 #include <vector>
 
 namespace pdal
 {
 
-static PluginInfo const s_info = PluginInfo(
-    "filters.range",
-    "Pass only points given a dimension/range.",
-    "http://pdal.io/stages/filters.range.html" );
+static PluginInfo const s_info =
+    PluginInfo("filters.range", "Pass only points given a dimension/range.",
+               "http://pdal.io/stages/filters.range.html");
 
 CREATE_STATIC_PLUGIN(1, 0, RangeFilter, Filter, s_info)
 
-std::string RangeFilter::getName() const { return s_info.name; }
+std::string RangeFilter::getName() const
+{
+    return s_info.name;
+}
+
+namespace
+{
+
+RangeFilter::Range parseRange(const std::string& r)
+{ 
+    std::string::size_type pos, count;
+    bool ilb = true;
+    bool iub = true;
+    bool negate = false;
+    const char *start;
+    char *end;
+    std::string name;
+    double ub, lb;
+
+    try
+    {
+        pos = 0;
+        // Skip leading whitespace.
+        count = Utils::extract(r, pos, (int(*)(int))std::isspace);
+        pos += count;
+
+        count = Utils::extract(r, pos, (int(*)(int))std::isalpha);
+        if (count == 0)
+           throw std::string("No dimension name.");
+        name = r.substr(pos, count);
+        pos += count;
+
+        if (r[pos] == '!')
+        {
+            negate = true;
+            pos++;
+        }
+
+        if (r[pos] == '(')
+            ilb = false;
+        else if (r[pos] != '[')
+            throw std::string("Missing '(' or '['.");
+        pos++;
+
+        // Extract lower bound.
+        start = r.data() + pos;
+        lb = std::strtod(start, &end);
+        if (start == end)
+            lb = std::numeric_limits<double>::min();
+        pos += (end - start);
+
+        count = Utils::extract(r, pos, (int(*)(int))std::isspace);
+        pos += count;
+
+        if (r[pos] != ':')
+            throw std::string("Missing ':' limit separator.");
+        pos++;
+
+        start = r.data() + pos;
+        ub = std::strtod(start, &end);
+        if (start == end)
+            ub = std::numeric_limits<double>::max();
+        pos += (end - start);
+
+        count = Utils::extract(r, pos, (int(*)(int))std::isspace);
+        pos += count;
+
+        if (r[pos] == ')')
+            iub = false;
+        else if (r[pos] != ']')
+            throw std::string("Missing ')' or ']'.");
+        pos++;
+
+        count = Utils::extract(r, pos, (int(*)(int))std::isspace);
+        pos += count;
+
+        if (pos != r.size())
+            throw std::string("Invalid characters following valid range.");
+    }
+    catch (std::string s)
+    {
+        std::ostringstream oss;
+        oss << "filters.range: invalid 'limits' option: '" << r << "': " << s;
+        throw pdal_error(oss.str());
+    }
+    return RangeFilter::Range(name, lb, ub, ilb, iub, negate);
+}
+
+} // unnamed namespace
+
+
+bool operator < (const RangeFilter::Range& r1, const RangeFilter::Range& r2)
+{
+    return (r1.m_name < r2.m_name ? true :
+        r1.m_name > r2.m_name ? false :
+        &r1 < &r2);
+}
+
 
 void RangeFilter::processOptions(const Options& options)
 {
-    std::vector<Option> dimensions = options.getOptions("dimension");
-    if (dimensions.size() == 0)
-        throw pdal_error("No dimensions given");
+    StringList rangeString = options.getValueOrDefault<StringList>("limits");
 
-    for (auto const& d : dimensions)
-    {
-        std::string name = d.getValue<std::string>();
-        boost::optional<Options const&> dimensionOptions = d.getOptions();
-        if (!dimensionOptions)
-            throw pdal_error("No dimension options");
+    if (rangeString.empty())
+        throw pdal_error("filters.range missing required 'limits' option.");
 
-        double val =dimensionOptions->getValueOrDefault<double>("equals",
-            (std::numeric_limits<double>::max)());
-        double min = dimensionOptions->getValueOrDefault<double>("min",
-            -(std::numeric_limits<double>::max)());
-        double max = dimensionOptions->getValueOrDefault<double>("max",
-            (std::numeric_limits<double>::max)());
-
-        if (val != (std::numeric_limits<double>::max)())
-            min = max = val;
-
-        Range range;
-        range.min = min;
-        range.max = max;
-
-        m_name_map.insert(std::make_pair(name, range));
-    }
+    for (auto const& r : rangeString)
+        m_range_list.push_back(parseRange(r));
 }
 
-void RangeFilter::ready(PointTableRef table)
+
+void RangeFilter::prepared(PointTableRef table)
 {
     const PointLayoutPtr layout(table.layout());
-    for (auto const& d : m_name_map)
+
+    for (auto& r : m_range_list)
     {
-        m_dimensions_map.insert(
-                std::make_pair(
-                    layout->findDim(d.first),
-                    d.second));
+        r.m_id = layout->findDim(r.m_name);
+        if (r.m_id == Dimension::Id::Unknown)
+        {
+            std::ostringstream oss;
+            oss << "Invalid dimension name in filters.range 'limits' "
+                "option: '" << r.m_name << "'.";
+            throw pdal_error(oss.str());
+        }
     }
+    std::sort(m_range_list.begin(), m_range_list.end());
 }
+
+// Determine if a point passes a single range.
+bool RangeFilter::dimensionPasses(double v, const Range& r) const
+{
+    bool fail = ((r.m_inclusive_lower_bound && v < r.m_lower_bound) ||
+        (!r.m_inclusive_lower_bound && v <= r.m_lower_bound) ||
+        (r.m_inclusive_upper_bound && v > r.m_upper_bound) ||
+        (!r.m_inclusive_upper_bound && v >= r.m_upper_bound));
+    if (r.m_negate)
+        fail = !fail;
+    return !fail;
+}
+
+// The range list is sorted by dimension, so the logic here should work
+// as ORs between ranges of the same dimension and ANDs between ranges
+// of different dimensions.  This is simple logic, but is probably the most
+// common case.
+bool RangeFilter::pointPasses(PointView *view, PointId idx) const
+{
+    Dimension::Id::Enum lastId = m_range_list.front().m_id;
+    bool passes = false;
+    for (auto const& r : m_range_list)
+    {
+        // If we're at a new dimension, return false if we haven't passed
+        // the dimension, otherwise reset passes to false for the next
+        // dimension and keep checking.
+        if (r.m_id != lastId)
+        {
+            if (!passes)
+                return false;
+            lastId = r.m_id;
+            passes = false;
+        }
+        // If we've already passed this dimension, continue until we find
+        // a new dimension.
+        else if (passes)
+            continue;
+        double v = view->getFieldAs<double>(r.m_id, idx);
+        passes = dimensionPasses(v, r);
+    }
+    return passes;
+}
+
 
 PointViewSet RangeFilter::run(PointViewPtr inView)
 {
@@ -105,25 +232,11 @@ PointViewSet RangeFilter::run(PointViewPtr inView)
     PointViewPtr outView = inView->makeNew();
 
     for (PointId i = 0; i < inView->size(); ++i)
-    {
-        bool keep_point = true;
-        for (auto const& d : m_dimensions_map)
-        {
-            double v = inView->getFieldAs<double>(d.first, i);
-            if (v < d.second.min || v > d.second.max)
-            {
-                keep_point = false;
-                break;
-            }
-        }
-        if (keep_point)
+        if (pointPasses(inView.get(), i))
             outView->appendPoint(*inView, i);
-    }
 
     viewSet.insert(outView);
-
     return viewSet;
 }
 
 } // pdal
-

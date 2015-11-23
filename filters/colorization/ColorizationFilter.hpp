@@ -50,28 +50,29 @@ extern "C" PF_ExitFunc ColorizationFilter_InitPlugin();
 namespace pdal
 {
 
-namespace gdal
-{ class GlobalDebug; }
-
 // Provides GDAL-based raster overlay that places output data in
 // specified dimensions. It also supports scaling the data by a multiplier
 // on a per-dimension basis.
 class PDAL_DLL ColorizationFilter : public Filter
 {
-
-struct BandInfo
-{
-    BandInfo(const std::string& name, Dimension::Id::Enum dim, uint32_t band,
-        double scale) : m_name(name), m_dim(dim), m_band(band), m_scale(scale)
-    {}
-
-    std::string m_name;
-    Dimension::Id::Enum m_dim;
-    uint32_t m_band;
-    double m_scale;
-};
-
 public:
+    struct BandInfo
+    {
+        BandInfo(const std::string& name, uint32_t band, double scale) :
+            m_name(name), m_band(band), m_scale(scale),
+            m_dim(Dimension::Id::Unknown)
+        {}
+
+        BandInfo() : m_band(0), m_scale(1.0), m_dim(Dimension::Id::Unknown)
+        {}
+
+        std::string m_name;
+        uint32_t m_band;
+        double m_scale;
+        Dimension::Id::Enum m_dim;
+    };
+
+
     ColorizationFilter()
     {}
 
@@ -87,19 +88,11 @@ private:
     virtual void addDimensions(PointLayoutPtr layout);
     virtual void ready(PointTableRef table);
     virtual void filter(PointView& view);
-    virtual void done(PointTableRef table);
-
-    bool getPixelAndLinePosition(double x, double y,
-        boost::array<double, 6> const& inverse, int32_t& pixel,
-        int32_t& line, void *ds);
 
     std::string m_rasterFilename;
     std::vector<BandInfo> m_bands;
 
-    boost::array<double, 6> m_forward_transform;
-    boost::array<double, 6> m_inverse_transform;
-
-    GDALDatasetH m_ds;
+    std::unique_ptr<gdal::Raster> m_raster;
 
     ColorizationFilter& operator=(const ColorizationFilter&); // not implemented
     ColorizationFilter(const ColorizationFilter&); // not implemented

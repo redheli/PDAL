@@ -6,8 +6,8 @@ filters.range
 The range filter applies rudimentary filtering to the input point cloud
 based on a set of criteria on the given dimensions.
 
-Example
--------
+Pipeline Example
+----------------
 
 This example passes through all points whose Z value is in the range [0,100]
 and whose classification equals 2 (corresponding to ground in LAS).
@@ -21,18 +21,8 @@ and whose classification equals 2 (corresponding to ground in LAS).
         filtered.las
       </Option>
       <Filter type="filters.range">
-        <Option name="dimension">
-          Z
-          <Options>
-            <Option name="min">0</Option>
-            <Option name="max">100</Option>
-          </Options>
-        </Option>
-        <Option name="dimension">
-          Classification
-          <Options>
-            <Option name="equals">2</Option>
-          </Options>
+        <Option name="limits">
+          Z[0:100],Classification[2:2]
         </Option>
         <Reader type="readers.las">
           <Option name="filename">
@@ -43,16 +33,31 @@ and whose classification equals 2 (corresponding to ground in LAS).
     </Writer>
   </Pipeline>
 
+Command-line Example
+--------------------
+
+The equivalent pipeline invoked via the PDAL ``translate`` command would be
+
+.. code-block:: bash
+
+  $ pdal translate -i input.las -o filtered.las -f range --filters.range.limits="Z[0:100],Classification[2:2]"
 
 Options
 -------
 
-dimension
-  A dimension Option with an Options block containing the range criteria.
+limits
+  A comma-separated list of :ref:`ranges`.  If more than one range is
+  specified for a dimension, the criteria are treated as being logically
+  ORed together.  Ranges for different dimensions are treated as being
+  logically ANDed.
 
-  * min: The minimum allowable value (inclusive) to pass through to the filtered point cloud.
+  Example:
 
-  * max: The maximum allowable value (inclusive) to pass through to the filtered point cloud.
+  ::
 
-  * equals: The exact value to pass through to the filtered point cloud (i.e., min = max).
+    Classification[1:2], Red[1:50], Blue[25:75], Red[75:255], Classification[6:7]
+
+  This specification will select points that have the classification of
+  1, 2, 6 or 7 and have a blue value or 25-75 and have a red value of
+  1-50 or 75-255.  In this case, all values are inclusive.
 

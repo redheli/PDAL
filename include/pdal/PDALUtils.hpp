@@ -44,6 +44,10 @@
 #include <pdal/PointView.hpp>
 #include <pdal/Options.hpp>
 
+#ifndef _WIN32
+#include <sys/fcntl.h>
+#endif
+
 namespace pdal
 {
 
@@ -225,15 +229,8 @@ inline ptree toPTree(const Option& option)
     t.put("Name", option.getName());
     t.put("Value", option.getValue<std::string>());
     if (option.getDescription() != "")
-    {
         t.put("Description", option.getDescription());
-    }
-    boost::optional<Options const&> options = option.getOptions();
 
-    if (options != boost::none)
-    {
-        t.add_child("Options", toPTree(*options));
-    }
     return t;
 }
 

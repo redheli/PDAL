@@ -21,6 +21,7 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/io/bpf
     ${PROJECT_SOURCE_DIR}/io/buffer
     ${PROJECT_SOURCE_DIR}/io/faux
+    ${PROJECT_SOURCE_DIR}/io/ilvis2
     ${PROJECT_SOURCE_DIR}/io/las
     ${PROJECT_SOURCE_DIR}/io/optech
     ${PROJECT_SOURCE_DIR}/io/ply
@@ -32,8 +33,10 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/filters/colorization
     ${PROJECT_SOURCE_DIR}/filters/crop
     ${PROJECT_SOURCE_DIR}/filters/decimation
+    ${PROJECT_SOURCE_DIR}/filters/divider
     ${PROJECT_SOURCE_DIR}/filters/ferry
     ${PROJECT_SOURCE_DIR}/filters/mortonorder
+    ${PROJECT_SOURCE_DIR}/filters/randomize
     ${PROJECT_SOURCE_DIR}/filters/reprojection
     ${PROJECT_SOURCE_DIR}/filters/range
     ${PROJECT_SOURCE_DIR}/filters/sort
@@ -74,6 +77,7 @@ endif()
 PDAL_ADD_TEST(pdal_io_bpf_test FILES io/bpf/BPFTest.cpp)
 PDAL_ADD_TEST(pdal_io_buffer_test FILES io/buffer/BufferTest.cpp)
 PDAL_ADD_TEST(pdal_io_faux_test FILES io/faux/FauxReaderTest.cpp)
+PDAL_ADD_TEST(pdal_io_ilvis2_test FILES io/ilvis2/Ilvis2ReaderTest.cpp)
 PDAL_ADD_TEST(pdal_io_las_reader_test FILES io/las/LasReaderTest.cpp)
 PDAL_ADD_TEST(pdal_io_las_writer_test FILES io/las/LasWriterTest.cpp)
 PDAL_ADD_TEST(pdal_io_optech_test FILES io/optech/OptechReaderTest.cpp)
@@ -91,10 +95,12 @@ PDAL_ADD_TEST(pdal_filters_chipper_test FILES filters/ChipperTest.cpp)
 PDAL_ADD_TEST(pdal_filters_colorization_test FILES filters/ColorizationFilterTest.cpp)
 PDAL_ADD_TEST(pdal_filters_crop_test FILES filters/CropFilterTest.cpp)
 PDAL_ADD_TEST(pdal_filters_decimation_test FILES filters/DecimationFilterTest.cpp)
+PDAL_ADD_TEST(pdal_filters_divider_test FILES filters/DividerFilterTest.cpp)
 PDAL_ADD_TEST(pdal_filters_ferry_test FILES filters/FerryFilterTest.cpp)
 PDAL_ADD_TEST(pdal_filters_merge_test FILES filters/MergeTest.cpp)
 PDAL_ADD_TEST(pdal_filters_reprojection_test FILES filters/ReprojectionFilterTest.cpp)
 PDAL_ADD_TEST(pdal_filters_range_test FILES filters/RangeFilterTest.cpp)
+PDAL_ADD_TEST(pdal_filters_randomize_test FILES filters/RandomizeFilterTest.cpp)
 PDAL_ADD_TEST(pdal_filters_sort_test FILES filters/SortFilterTest.cpp)
 PDAL_ADD_TEST(pdal_filters_splitter_test FILES filters/SplitterTest.cpp)
 PDAL_ADD_TEST(pdal_filters_stats_test FILES filters/StatsFilterTest.cpp)
